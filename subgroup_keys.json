@@ -1,0 +1,286 @@
+{
+  "Hapludults": {
+    "path": [
+      "Ultisols",
+      "Udults",
+      "Hapludults"
+    ],
+    "printed_pages": [
+      330,
+      331
+    ],
+    "pdf_pages": [
+      338,
+      339
+    ],
+    "entries": [
+      {
+        "code": "HCGA",
+        "name": "Lithic-Ruptic-Entic Hapludults",
+        "criteria": "Hapludults that have either or both:\n1. In each pedon, a discontinuous lithic contact* within 50 \ncm of the mineral soil surface; and/or\n2. In each pedon, a discontinuous argillic horizon that is \ninterrupted by ledges of bedrock.",
+        "fallback": false
+      },
+      {
+        "code": "HCGB",
+        "name": "Lithic Hapludults",
+        "criteria": "Other Hapludults that have a lithic contact within 50 \ncm of the mineral soil surface.",
+        "fallback": false
+      },
+      {
+        "code": "HCGC",
+        "name": "Vertic Hapludults",
+        "criteria": "Other Hapludults that have one or both of the \nfollowing:\n1. Cracks within 125 cm of the mineral soil surface that are \n5 mm or more wide through a thickness of 30 cm or more \nfor some time in normal years and slickensides or wedge-\nshaped peds in a layer 15 cm or more thick that has its upper \nboundary within 125 cm of the mineral soil surface; or\n2. A linear extensibility of 6.0 cm or more between the \nmineral soil surface and either a depth of 100 cm or a densic, \nlithic, or paralithic contact, whichever is shallower.",
+        "fallback": false
+      },
+      {
+        "code": "HCGD",
+        "name": "Fragiaquic Hapludults",
+        "criteria": "Other Hapludults that have both of the following:\n1. Fragic soil properties either:\na. In 30 percent or more of the volume of a layer 15 cm \nor more thick that has its upper boundary within 100 cm \nof the mineral soil surface; or\nb. In 60 percent or more of the volume of a layer 15 cm \nor more thick; and\n2. In one or more layers within 75 cm of the mineral soil \nsurface, redox depletions with a color value, moist, of 4 or \nmore and chroma of 2 or less, accompanied by both redox \nconcentrations and aquic conditions for some time in normal \nyears (or artificial drainage).",
+        "fallback": false
+      },
+      {
+        "code": "HCGE",
+        "name": "Aquic Arenic Hapludults",
+        "criteria": "Other Hapludults that:\n1. Have a texture class (fine-earth fraction) of coarse sand, \nsand, fine sand, loamy coarse sand, loamy sand, or loamy \nfine sand throughout a layer extending from the mineral soil \nsurface to the top of an argillic horizon at a depth of 50 to \n100 cm; and\n2. Have, in one or more layers within 100 cm of the \nmineral soil surface, one or both of the following:\na. Redox concentrations and aquic conditions for some \ntime in normal years (or artificial drainage); or\nb. Redox depletions with a color value, moist, of 4 or \nmore and chroma of 2 or less and aquic conditions for \nsome time in normal years (or artificial drainage).",
+        "fallback": false
+      },
+      {
+        "code": "HCGF",
+        "name": "Aquic Hapludults",
+        "criteria": "Other Hapludults that have, in one or more layers \nwithin 100 cm of the mineral soil surface, one or both of the \nfollowing:\n1. Redox concentrations and aquic conditions for some \ntime in normal years (or artificial drainage); or\n2. Redox depletions with a color value, moist, of 4 or more \nand chroma of 2 or less and aquic conditions for some time \nin normal years (or artificial drainage).",
+        "fallback": false
+      },
+      {
+        "code": "HCGG",
+        "name": "Fragic Hapludults",
+        "criteria": "Other Hapludults that have fragic soil properties \neither:\n1. In 30 percent or more of the volume of a layer 15 cm or \nmore thick that has its upper boundary within 100 cm of the \nmineral soil surface; or\n2. In 60 percent or more of the volume of a layer 15 cm or \nmore thick.",
+        "fallback": false
+      },
+      {
+        "code": "HCGH",
+        "name": "Oxyaquic Hapludults",
+        "criteria": "Other Hapludults that in normal years are saturated \nwith water in one or more layers within 100 cm of the mineral \nsoil surface for either or both:\n1. 20 or more consecutive days; or\n2. 30 or more cumulative days.",
+        "fallback": false
+      },
+      {
+        "code": "HCGI",
+        "name": "Lamellic Hapludults",
+        "criteria": "Other Hapludults that have an argillic horizon that:\n1. Consists entirely of lamellae; or\n2. Is a combination of two or more lamellae and one or \nmore subhorizons with a thickness of 7.5 to 20 cm, each \nlayer with an overlying eluvial horizon; or\n3. Consists of one or more subhorizons that are more than \n20 cm thick, each with an overlying eluvial horizon, and \nabove these horizons there are either:\na. Two or more lamellae with a combined thickness of \n5 cm or more (that may or may not be part of the argillic \nhorizon); or\nb. A combination of lamellae (that may or may not be \npart of the argillic horizon) and one or more parts of the \nargillic horizon 7.5 to 20 cm thick, each with an overlying \neluvial horizon.",
+        "fallback": false
+      },
+      {
+        "code": "HCGJ",
+        "name": "Psammentic Hapludults",
+        "criteria": "Other Hapludults that have a sandy particle-size class \nthroughout the upper 75 cm of the argillic horizon or throughout \nthe entire argillic horizon if it is less than 75 cm thick.",
+        "fallback": false
+      },
+      {
+        "code": "HCGK",
+        "name": "Arenic Hapludults",
+        "criteria": "Other Hapludults that have a texture class (fine-earth \nfraction) of coarse sand, sand, fine sand, loamy coarse sand, \nloamy sand, or loamy fine sand throughout a layer extending \nfrom the mineral soil surface to the top of an argillic horizon at \na depth of 50 to 100 cm.",
+        "fallback": false
+      },
+      {
+        "code": "HCGL",
+        "name": "Grossarenic Hapludults",
+        "criteria": "Other Hapludults that have a texture class (fine-earth \nfraction) of coarse sand, sand, fine sand, loamy coarse sand, \nloamy sand, or loamy fine sand throughout a layer extending \nfrom the mineral soil surface to the top of an argillic horizon at \na depth of 100 cm or more.",
+        "fallback": false
+      },
+      {
+        "code": "HCGM",
+        "name": "Inceptic Hapludults",
+        "criteria": "Other Hapludults that:\n1. Do not have a densic, lithic, or paralithic contact within \n50 cm of the mineral soil surface; and\n2. Have an argillic horizon that is 25 cm or less thick.",
+        "fallback": false
+      },
+      {
+        "code": "HCGN",
+        "name": "Humic Hapludults",
+        "criteria": "Other Hapludults that have a color value, moist, \nof 3 or less and a color value, dry, of 5 or less (crushed and \nsmoothed sample) in either:\n1. An Ap horizon that is 18 cm or more thick; or\n2. The surface layer after mixing of the upper 18 cm.",
+        "fallback": false
+      },
+      {
+        "code": "HCGO",
+        "name": "Typic Hapludults",
+        "criteria": "Other Hapludults.",
+        "fallback": true
+      }
+    ]
+  },
+  "Dystrudepts": {
+    "path": [
+      "Inceptisols",
+      "Udepts",
+      "Dystrudepts"
+    ],
+    "printed_pages": [
+      224,
+      225,
+      226,
+      227
+    ],
+    "pdf_pages": [
+      232,
+      233,
+      234,
+      235
+    ],
+    "entries": [
+      {
+        "code": "KFGA",
+        "name": "Humic Lithic Dystrudepts",
+        "criteria": "Dystrudepts that have both:\n1. A lithic contact within 50 cm of the mineral soil surface; \nand\n2. A color value, moist, of 3 or less and a color value, dry, \nof 5 or less (crushed and smoothed sample) either throughout \nthe upper 18 cm of the mineral soil (unmixed) or between the \nmineral soil surface and a depth of 18 cm after mixing.",
+        "fallback": false
+      },
+      {
+        "code": "KFGB",
+        "name": "Lithic Dystrudepts",
+        "criteria": "Other Dystrudepts that have a lithic contact within 50 \ncm of the mineral soil surface.",
+        "fallback": false
+      },
+      {
+        "code": "KFGC",
+        "name": "Vertic Dystrudepts",
+        "criteria": "Other Dystrudepts that have one or both of the \nfollowing:\n1. Cracks within 125 cm of the mineral soil surface that are \n5 mm or more wide through a thickness of 30 cm or more \nfor some time in normal years and slickensides or wedge-\nshaped peds in a layer 15 cm or more thick that has its upper \nboundary within 125 cm of the mineral soil surface; or\n2. A linear extensibility of 6.0 cm or more between the \nmineral soil surface and either a depth of 100 cm or a densic, \nlithic, or paralithic contact, whichever is shallower.",
+        "fallback": false
+      },
+      {
+        "code": "KFGD",
+        "name": "Anthrodensic Dystrudepts",
+        "criteria": "Other Dystrudepts that have a densic contact due to \nmechanical compaction in more than 90 percent of the pedon \n(measured laterally) within 100 cm of the soil surface.",
+        "fallback": false
+      },
+      {
+        "code": "KFGE",
+        "name": "Anthroportic Dystrudepts",
+        "criteria": "Other Dystrudepts that have human-transported \nmaterial that is 50 cm or more thick.",
+        "fallback": false
+      },
+      {
+        "code": "KFGF",
+        "name": "Aquandic Dystrudepts",
+        "criteria": "Other Dystrudepts that have both:\n1. In one or more horizons within 60 cm of the mineral soil \nsurface, redox depletions with chroma of 2 or less and also \naquic conditions for some time in normal years (or artificial \ndrainage); and\n2. Throughout one or more horizons with a total thickness \nof 18 cm or more within 75 cm of the mineral soil surface, \none or more of the following:\na. A fine-earth fraction with both a bulk density of 1.0 \ng/cm3 or less, measured at 33 kPa water retention, and Al \nplus 1/2 Fe percentages (by ammonium oxalate) totaling \nmore than 1.0; or\nb. More than 35 percent (by volume) particles 2.0 mm \nor larger in diameter, of which more than 66 percent is \ncinders, pumice, and pumicelike fragments; or\nc. A fine-earth fraction containing 30 percent or more \nparticles 0.02 to 2.0 mm in diameter; and\n(1) In the 0.02 to 2.0 mm fraction, 5 percent or more \nvolcanic glass; and\n(2) [(Al plus 1/2 Fe, percent extracted by ammonium \noxalate) times 60] plus the volcanic glass (percent) is \nequal to 30 or more.",
+        "fallback": false
+      },
+      {
+        "code": "KFGG",
+        "name": "Andic Oxyaquic Dystrudepts",
+        "criteria": "Other Dystrudepts that have both:\n1. In one or more horizons with a total thickness of 18 \ncm or more within 75 cm of the mineral soil surface, a \nfine-earth fraction with both a bulk density of 1.0 g/cm\n3 or \nless, measured at 33 kPa water retention, and Al plus 1/2 Fe \npercentages (by ammonium oxalate) totaling more than 1.0; \nand\n2. Saturation with water within 100 cm of the mineral soil \nsurface in normal years for either or both:\na. 20 or more consecutive days; or\nb. 30 or more cumulative days.",
+        "fallback": false
+      },
+      {
+        "code": "KFGH",
+        "name": "Andic Dystrudepts",
+        "criteria": "Other Dystrudepts that have, throughout one or more \nhorizons with a total thickness of 18 cm or more within 75 cm \nof the mineral soil surface, a fine-earth fraction with both a bulk \ndensity of 1.0 g/cm\n3 or less, measured at 33 kPa water retention, \nand Al plus 1/2 Fe percentages (by ammonium oxalate) totaling \nmore than 1.0.",
+        "fallback": false
+      },
+      {
+        "code": "KFGI",
+        "name": "Vitrandic Dystrudepts",
+        "criteria": "Other Dystrudepts that have, throughout one or more \nhorizons with a total thickness of 18 cm or more within 75 cm \nof the mineral soil surface, one or both of the following:\n1. More than 35 percent (by volume) particles 2.0 mm or \nlarger in diameter, of which more than 66 percent is cinders, \npumice, and pumicelike fragments; or\n2. A fine-earth fraction containing 30 percent or more \nparticles 0.02 to 2.0 mm in diameter; and\na. In the 0.02 to 2.0 mm fraction, 5 percent or more \nvolcanic glass; and\nb. [(Al plus 1/2 Fe, percent extracted by ammonium \noxalate) times 60] plus the volcanic glass (percent) is \nequal to 30 or more.",
+        "fallback": false
+      },
+      {
+        "code": "KFGJ",
+        "name": "Fragiaquic Dystrudepts",
+        "criteria": "Other Dystrudepts that have both:\n1. Fragic soil properties either:\na. In 30 percent or more of the volume of a layer 15 cm \nor more thick that has its upper boundary within 100 cm \nof the mineral soil surface; or\nb. In 60 percent or more of the volume of a layer 15 cm \nor more thick; and\n2. In one or more horizons within 60 cm of the mineral \nsoil surface, redox depletions with chroma of 2 or less \nand also aquic conditions in normal years (or artificial \ndrainage).",
+        "fallback": false
+      },
+      {
+        "code": "KFGK",
+        "name": "Thapto-Humic Dystrudepts",
+        "criteria": "Other Dystrudepts that meet one or both of the \nfollowing:\n1. Have a buried layer that meets criteria for a histic, \nmollic, umbric, or melanic epipedon within 200 cm of the \nsoil surface; or\n2. Have buried O and dark-colored A  horizons (moist value \nof 3 or less), within 200 cm of the soil surface and with a \ncombined thickness of 20 cm or more, that have 1.0 percent \nor more Holocene-age organic carbon.",
+        "fallback": false
+      },
+      {
+        "code": "KFGL",
+        "name": "Fluvaquentic Dystrudepts",
+        "criteria": "Other Dystrudepts that have all of the following:\n1. A slope of less than 25 percent; and\n2. A total thickness of less than 50 cm of human-\ntransported material in the surface horizons; and\n3. In one or more horizons within 60 cm of the mineral soil \nsurface, redox depletions with chroma of 2 or less and also \naquic conditions for some time in normal years (or artificial \ndrainage); and\n4. One or both of the following:\na. At a depth of 125 cm below the mineral soil surface, \nan organic carbon content (Holocene age) of 0.2 percent \nor more and no densic, lithic, or paralithic contact within \nthat depth; or\nb. An irregular decrease in organic carbon content \n(Holocene age) between a depth of 25 cm and either \na depth of 125 cm below the mineral soil surface or \na densic, lithic, or paralithic contact, whichever is \nshallower.",
+        "fallback": false
+      },
+      {
+        "code": "KFGM",
+        "name": "Aquic Humic Dystrudepts",
+        "criteria": "Other Dystrudepts that have both:\n1. A color value, moist, of 3 or less and a color value,  \ndry, of 5 or less (crushed and smoothed sample) either \nthroughout the upper 18 cm of the mineral soil (unmixed) or \nbetween the mineral soil surface and a depth of 18 cm after \nmixing; and\n2. In one or more horizons within 60 cm of the mineral soil \nsurface, redox depletions with chroma of 2 or less and also \naquic conditions for some time in normal years (or artificial \ndrainage).",
+        "fallback": false
+      },
+      {
+        "code": "KFGN",
+        "name": "Aquic Dystrudepts",
+        "criteria": "Other Dystrudepts that have, in one or more horizons \nwithin 60 cm of the mineral soil surface, redox depletions with \nchroma of 2 or less and also aquic conditions for some time in \nnormal years (or artificial drainage).",
+        "fallback": false
+      },
+      {
+        "code": "KFGO",
+        "name": "Oxyaquic Dystrudepts",
+        "criteria": "Other Dystrudepts that in normal years are saturated \nwith water in one or more layers within 100 cm of the mineral \nsoil surface for either or both:\n1. 20 or more consecutive days; or\n2. 30 or more cumulative days.",
+        "fallback": false
+      },
+      {
+        "code": "KFGP",
+        "name": "Fragic Dystrudepts",
+        "criteria": "Other Dystrudepts that have fragic soil properties \neither:\n1. In 30 percent or more of the volume of a layer 15 cm or \nmore thick that has its upper boundary within 100 cm of the \nmineral soil surface; or\n2. In 60 percent or more of the volume of a layer 15 cm or \nmore thick.",
+        "fallback": false
+      },
+      {
+        "code": "KFGQ",
+        "name": "Lamellic Dystrudepts",
+        "criteria": "Other Dystrudepts that have lamellae (two or more) \nwithin 200 cm of the mineral soil surface.",
+        "fallback": false
+      },
+      {
+        "code": "KFGR",
+        "name": "Humic Psammentic Dystrudepts",
+        "criteria": "Other Dystrudepts that have both:\n1. A color value, moist, of 3 or less and a color value, dry, \nof 5 or less (crushed and smoothed sample) either throughout \nthe upper 18 cm of the mineral soil (unmixed) or between the \nmineral soil surface and a depth of 18 cm after mixing; and\n2. A sandy particle-size class in all subhorizons throughout \nthe particle-size control section.",
+        "fallback": false
+      },
+      {
+        "code": "KFGS",
+        "name": "Fluventic Humic Dystrudepts",
+        "criteria": "Other Dystrudepts that have all of the following:\n1. A slope of less than 25 percent; and\n2. A total thickness of less than 50 cm of human-\ntransported material in the surface horizons; and\n3. A color value, moist, of 3 or less and a color value,  \ndry, of 5 or less (crushed and smoothed sample) either \nthroughout the upper 18 cm of the mineral soil (unmixed) or \nbetween the mineral soil surface and a depth of 18 cm after \nmixing; and\n4. One or both of the following:\na. At a depth of 125 cm below the mineral soil surface, \nan organic carbon content (Holocene age) of 0.2 percent \nor more and no densic, lithic, or paralithic contact within \nthat depth; or\nb. An irregular decrease in organic carbon content \n(Holocene age) between a depth of 25 cm and either \na depth of 125 cm below the mineral soil surface or \na densic, lithic, or paralithic contact, whichever is \nshallower.",
+        "fallback": false
+      },
+      {
+        "code": "KFGT",
+        "name": "Fluventic Dystrudepts",
+        "criteria": "Other Dystrudepts that have all of the following:\n1. A slope of less than 25 percent; and\n2. A total thickness of less than 50 cm of human-\ntransported material in the surface horizons; and\n3. One or both of the following:\na. At a depth of 125 cm below the mineral soil surface, \nan organic carbon content (Holocene age) of 0.2 percent \nor more and no densic, lithic, or paralithic contact within \nthat depth; or\nb. An irregular decrease in organic carbon content \n(Holocene age) between a depth of 25 cm and either \na depth of 125 cm below the mineral soil surface or \na densic, lithic, or paralithic contact, whichever is \nshallower.",
+        "fallback": false
+      },
+      {
+        "code": "KFGU",
+        "name": "Spodic Dystrudepts",
+        "criteria": "Other Dystrudepts that have a horizon 5 cm or more \nthick that has one or more of the following:\n1. 25 percent or more of the horizon in each pedon \nis extremely weakly coherent or more coherent due to \npedogenic cementation by organic matter and aluminum, \nwith or without iron; or\n2. Al plus 1/2 Fe percentages (by ammonium oxalate) \ntotaling 0.25 or more, and half that amount or less in an \noverlying horizon; or\n3. An ODOE value of 0.12 or more, and a value half as \nhigh or lower in an overlying horizon.",
+        "fallback": false
+      },
+      {
+        "code": "KFGV",
+        "name": "Oxic Dystrudepts",
+        "criteria": "Other Dystrudepts that have, in 50 percent or more \nof the soil volume between a depth of 25 cm from the mineral \nsoil surface and either a depth of 100 cm or a densic, lithic, or \nparalithic contact if shallower:\n1. A CEC (by 1N NH4OAc pH 7) of less than 24 cmol(+) \nper kg clay; or\n2. Both a ratio of measured clay in the fine-earth fraction \nto percent water retained at 1500 kPa tension of 0.6 or more \nand the following: the CEC (by 1N NH\n4OAc pH 7) divided \nby the product of three times [percent water retained at 1500 \nkPa tension minus percent organic carbon (but no more than \n1.00)] is less than 24.",
+        "fallback": false
+      },
+      {
+        "code": "KFGW",
+        "name": "Ruptic-Alfic Dystrudepts",
+        "criteria": "Other Dystrudepts that have both:\n1. In each pedon a cambic horizon that includes 10 to 50 \npercent (by volume) illuvial parts that otherwise meet the \nrequirements for an argillic, kandic, or natric horizon; and\n2. A base saturation (by sum of cations) of 35 percent or \nmore either at a depth of 125 cm from the top of the cambic \nhorizon or directly above a densic, lithic, or paralithic \ncontact if shallower.",
+        "fallback": false
+      },
+      {
+        "code": "KFGX",
+        "name": "Ruptic-Ultic Dystrudepts",
+        "criteria": "Other Dystrudepts that have in each pedon a cambic \nhorizon that includes 10 to 50 percent (by volume) illuvial parts \nthat otherwise meet the requirements for an argillic, kandic, or \nnatric horizon.",
+        "fallback": false
+      },
+      {
+        "code": "KFGY",
+        "name": "Humic Dystrudepts",
+        "criteria": "Other Dystrudepts that have a color value, moist, \nof 3 or less and a color value, dry, of 5 or less (crushed and \nsmoothed sample) either throughout the upper 18 cm of the \nmineral soil (unmixed) or between the mineral soil surface and \na depth of 18 cm after mixing.",
+        "fallback": false
+      },
+      {
+        "code": "KFGZ",
+        "name": "Typic Dystrudepts",
+        "criteria": "Other Dystrudepts.",
+        "fallback": true
+      }
+    ]
+  }
+}
