@@ -1,3 +1,7 @@
+import os
+import hashlib
+from io import BytesIO
+from PIL import Image, ImageOps, UnidentifiedImageError
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -17,7 +21,7 @@ st.title("🌱 Dashboard de Clasificación y Predicción de Suelos (USDA)")
 st.write("Herramienta estructurada de IA convencional para la investigación edafológica.")
 
 # Crear las pestañas del Dashboard
-tab1, tab2 = st.tabs(["🔬 Perfil y subgrupo", "🌍 Predicciones Geográficas (Carga tu Dataset)"])
+tab1, tab2, tab3 = st.tabs(["🔬 Perfil y subgrupo", "🌍 Predicciones Geográficas (Carga tu Dataset)", "Análisis de Estructura USDA"])
 
 # ==========================================
 # PESTAÑA 1: CLASIFICADOR DE LABORATORIO
@@ -148,3 +152,95 @@ with tab2:
             
     else:
         st.info("A la espera de un archivo Excel o CSV para activar las funciones de Machine Learning.")
+
+
+# ==========================================
+# ANÁLISIS MORFOLÓGICO CON ROBOFLOW
+# ==========================================
+def render_estructura_usda():
+    st.header("Análisis de Estructura USDA")
+    st.write("Sube una fotografía cercana y nítida de la muestra de suelo o toma una foto.")
+    st.caption("Al pulsar Analizar, la imagen se enviará a Roboflow. Las etiquetas dependen del modelo entrenado y requieren revisión de campo.")
+
+    api_key = os.environ.get("ROBOFLOW_API_KEY", "")
+    if not api_key:
+        try:
+            api_key = st.secrets.get("ROBOFLOW_API_KEY", "")
+        except (FileNotFoundError, st.errors.StreamlitSecretNotFoundError):
+            pass
+    if not api_key:
+        api_key = st.text_input("Clave API de Roboflow", type="password", key="rf_api_key",
+                                help="También puedes configurar ROBOFLOW_API_KEY en los secretos de Streamlit o como variable de entorno.")
+
+    origen = st.radio("Origen de la imagen", ["Subir fotografía", "Cámara"], horizontal=True, key="rf_source")
+    if origen == "Cámara":
+        archivo = st.camera_input("Toma una fotografía del suelo", key="rf_camera")
+    else:
+        archivo = st.file_uploader("Selecciona una imagen de suelo", type=["jpg", "jpeg", "png"], key="rf_photo")
+    if archivo is None:
+        st.session_state.pop("rf_result", None)
+        return
+    datos = archivo.getvalue()
+    if len(datos) > 20 * 1024 * 1024:
+        st.error("La imagen debe pesar como máximo 20 MB.")
+        return
+    try:
+        with Image.open(BytesIO(datos)) as original:
+            if original.width * original.height > 25_000_000:
+                st.error("Usa una imagen de hasta 25 megapíxeles.")
+                return
+            imagen = ImageOps.exif_transpose(original).convert("RGB")
+    except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombError):
+        st.error("No se pudo leer la fotografía. Selecciona un archivo JPG o PNG válido.")
+        return
+
+    st.image(imagen, caption="Muestra de suelo", use_container_width=True)
+    miniatura = imagen.copy()
+    miniatura.thumbnail((256, 256))
+    rgb = np.rint(np.asarray(miniatura).mean(axis=(0, 1))).astype(int)
+    hexadecimal = "#{:02X}{:02X}{:02X}".format(*rgb)
+    st.write(f"Color promedio de la fotografía: RGB {tuple(int(c) for c in rgb)} · {hexadecimal}")
+    st.caption("Color orientativo de toda la imagen, incluido el fondo; no es una medición Munsell ni un color por horizonte.")
+
+    identidad = hashlib.sha256(datos).hexdigest()
+    guardado = st.session_state.get("rf_result")
+    if guardado and guardado[0] != identidad:
+        st.session_state.pop("rf_result", None)
+    if st.button("Analizar estructura", key="rf_analyze", disabled=not bool(api_key)):
+        st.session_state.pop("rf_result", None)
+        try:
+            from inference_sdk import InferenceHTTPClient, InferenceConfiguration
+        except ImportError:
+            st.error("Falta instalar Roboflow. Ejecuta: python -m pip install -r requirements.txt")
+            return
+        try:
+            with st.spinner("Analizando la imagen con Roboflow…"):
+                client = InferenceHTTPClient(
+                    api_url="https://serverless.roboflow.com",
+                    api_key=api_key,
+                ).configure(InferenceConfiguration(api_key_transport="header"))
+                resultado = client.run_workflow(
+                    workspace_name="carlos-pimentel",
+                    workflow_id="usda-soil-structure",
+                    images={"image": imagen},
+                    parameters={"confidence": 0.4},
+                    use_cache=True,
+                )
+            st.session_state["rf_result"] = (identidad, resultado)
+        except Exception:
+            # No mostrar excepciones del proveedor: podrían contener credenciales.
+            st.error("No se pudo completar el análisis. Revisa la conexión, la clave API y el acceso al workflow carlos-pimentel/usda-soil-structure; verifica que acepte image y confidence.")
+            return
+
+    guardado = st.session_state.get("rf_result")
+    if guardado and guardado[0] == identidad:
+        if not guardado[1]:
+            st.info("El workflow no devolvió resultados para esta fotografía.")
+        else:
+            st.subheader("Resultados del workflow")
+            st.json(guardado[1])
+            st.caption("Se muestra la respuesta completa del modelo, con las clases y confidencias que devuelva tu workflow.")
+
+
+with tab3:
+    render_estructura_usda()
