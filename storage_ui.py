@@ -32,11 +32,15 @@ def render_study_import():
 def render_study_export():
     st.subheader('Guardar estudio y respaldo')
     st.caption('Descarga el ZIP después de editar. Conserva otra copia en una ubicación independiente y comprueba que abre. El acceso a fotos, ubicación y responsables depende de los permisos de la carpeta donde lo guardes. El ZIP no está cifrado ni firmado.')
-    try:
-        archive = build_study(st.session_state.study_report, st.session_state.get('study_current_photos', []), st.session_state.get('study_images', {}), st.session_state.get('study_structures', []))
-        st.download_button('Guardar estudio completo (ZIP)', archive, 'estudio_suelo.zip', 'application/zip', key='study_download')
-    except ValueError as error:
-        st.warning(str(error))
+    report = st.session_state.get('study_report')
+    if report is None:
+        st.warning('La ficha del perfil todavía no está disponible para guardar. Abre Perfil y subgrupo. Si el aviso persiste, comprueba que profile_ui.py y storage_ui.py estén actualizados juntos en el despliegue.')
+    else:
+        try:
+            archive = build_study(report, st.session_state.get('study_current_photos', []), st.session_state.get('study_images', {}), st.session_state.get('study_structures', []))
+            st.download_button('Guardar estudio completo (ZIP)', archive, 'estudio_suelo.zip', 'application/zip', key='study_download')
+        except ValueError as error:
+            st.warning(str(error))
     if st.session_state.get('study_structures'):
         with st.expander('Resultados de estructura conservados'):
             st.json(st.session_state.study_structures)
