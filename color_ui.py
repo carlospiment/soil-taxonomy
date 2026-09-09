@@ -14,6 +14,7 @@ from visual_observations import HORIZON_ID, create_observation
 from soil_color.color_spaces import load_srgb_image
 from soil_color.munsell import COLOR_VERSION, estimate_color
 from soil_color.calibration import CALIBRATION_VERSION, fit_neutral_reference
+from color_review_ui import render_color_reviews
 
 
 def evaluation_archive(observation, original, image_format):
@@ -30,6 +31,7 @@ def evaluation_archive(observation, original, image_format):
 
 def render_color():
     st.header("Color del suelo: región y calidad")
+    render_color_reviews()
     st.write("Selecciona una zona representativa del suelo y revisa la fotografía antes de estudiar su color.")
     st.caption("Evaluación local y orientativa. La foto no se envía a Roboflow. No sustituye la determinación de campo.")
     estimate = st.checkbox("Estimar Munsell orientativo (imagen no calibrada)", key="color_estimate")
@@ -166,7 +168,8 @@ def render_color():
 
     saved = st.session_state.get("color_qc_result")
     if saved:
-        observation = saved["observation"]
+        observation = next((o for o in st.session_state.visual_observations if o['observation_id'] == saved['observation']['observation_id']), saved['observation'])
+        saved['archive'] = evaluation_archive(observation, data, metadata['formato'])
         quality = observation["quality"]
         st.subheader("Evaluación exploratoria")
         if quality["status"] == "rejected":
@@ -194,4 +197,4 @@ def render_color():
                 st.json(prediction)
         st.download_button("Descargar evaluación e imagen original (ZIP)", saved["archive"],
                            "evaluacion_color.zip", "application/zip", key="color_download")
-        st.caption("Selección registrada como pendiente en esta sesión. El ZIP incluye la foto y los indicadores; la ficha del perfil incluye la observación, pero solo incluye esta foto si también la adjuntas allí. Descarga antes de cerrar. No hay guardado permanente ni validación humana aplicada.")
+        st.caption("El ZIP incluye la foto, los indicadores y las revisiones actuales. La ficha del perfil incluye la observación, pero solo incluye esta foto si también la adjuntas allí. Revisar y aplicar son pasos separados. Descarga antes de cerrar; no hay guardado permanente.")
