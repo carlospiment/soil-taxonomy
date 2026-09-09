@@ -13,6 +13,11 @@ from soil_profile import (
 )
 
 
+def study_editor(data, **kwargs):
+    saved = st.session_state.get('study_tables', {}).get(kwargs['key'])
+    return st.data_editor(pd.DataFrame(saved) if saved is not None else data, **kwargs)
+
+
 def render_profile():
     if "profile_uid" not in st.session_state:
         st.session_state.profile_uid = new_id()
@@ -46,7 +51,7 @@ def render_profile():
         horizons, derived_fractions = render_horizons()
     with st.expander("3. Horizontes y propiedades diagnósticas"):
         st.caption("Marca Presente solo si se cumplen todos los criterios de la definición, incluidos espesor, profundidad y método. Una designación Bt o Bw no confirma por sí misma un horizonte diagnóstico.")
-        diagnostics = st.data_editor(pd.DataFrame({
+        diagnostics = study_editor(pd.DataFrame({
             "Diagnóstico": DIAGNOSTICS, "Estado": ["No evaluado"] * len(DIAGNOSTICS),
             "Techo (cm)": [None] * len(DIAGNOSTICS), "Base (cm)": [None] * len(DIAGNOSTICS),
             "Evidencia / método / criterio": [""] * len(DIAGNOSTICS),
@@ -83,7 +88,7 @@ def render_profile():
             ("Materiales orgánicos: espesor", "cm"),
             ("Fibras después de frotamiento", "%"),
         ]
-        extra = st.data_editor(pd.DataFrame({
+        extra = study_editor(pd.DataFrame({
             "Parámetro": [p for p, u in extra_fields], "Unidad": [u for p, u in extra_fields],
             "Valor": pd.Series([None] * len(extra_fields), dtype="float64"),
             "Intervalo / método / evidencia": [""] * len(extra_fields),
@@ -119,7 +124,7 @@ def render_profile():
 
     with st.expander("5. Ruta taxonómica documentada", expanded=True):
         st.write("Transcribe el taxón y código de la clave oficial en cada nivel. Documenta por qué cumple y por qué no entra en las opciones anteriores. Typic no es una salida por falta de datos.")
-        route = st.data_editor(pd.DataFrame({
+        route = study_editor(pd.DataFrame({
             "Nivel": ["Orden", "Suborden", "Gran grupo", "Subgrupo"],
             "Taxón": [""] * 4, "Clave / página": [""] * 4,
             "Evidencia y exclusión de anteriores": [""] * 4,
@@ -141,7 +146,7 @@ def render_profile():
         "subgrupo_registrado_por_usuario": subgroup, "identificador": profile_id,
         "responsable": observer, "fecha_descripcion": observed_date.isoformat() if observed_date else None,
         "ubicacion": location, "fotos": [{k:v for k,v in photo.items() if k != "data"} for photo in photos],
-        "fracciones_calculadas": derived_fractions,
+        "fracciones_calculadas": [{"fila": populated_indices.index(d['fila'] - 1) + 1, "fraccion": d['fraccion']} for d in derived_fractions if d['fila'] - 1 in populated_indices],
         "profundidad_cm": depth, "origen_profundidades": reference,
         "contacto": contact, "profundidad_contacto_cm": contact_depth,
         "regimen_humedad": moisture, "regimen_temperatura": temperature,
@@ -170,6 +175,8 @@ def render_profile():
     report = extend_report(report, profile_uid=st.session_state.profile_uid,
                            horizon_refs=horizon_refs,
                            observations=st.session_state.visual_observations)
+    st.session_state.study_report = report
+    st.session_state.study_current_photos = photos
     st.download_button("Descargar ficha y ruta (JSON)", json.dumps(report, ensure_ascii=False, indent=2, allow_nan=False), "perfil_taxonomico.json", "application/json", key="profile_download")
     st.download_button("Descargar ficha + fotos (ZIP)", make_archive(report, photos), "perfil_con_fotos.zip", "application/zip", key="profile_download_zip",
         help="Incluye el JSON con coordenadas, fecha, resultados y decisiones, más los archivos originales de las fotos aceptadas.")

@@ -11,12 +11,14 @@ from sklearn.preprocessing import OneHotEncoder
 from profile_ui import render_profile
 from structure_ui import render_estructura_usda
 from color_ui import render_color
+from storage_ui import render_study_import, render_study_export
 
 # Configuración de la página del Dashboard
 st.set_page_config(page_title="SoilTaxonomy AI Dashboard", layout="wide", page_icon="🌱")
 
 st.title("🌱 Dashboard de Clasificación y Predicción de Suelos (USDA)")
 st.write("Herramienta estructurada de IA convencional para la investigación edafológica.")
+render_study_import()
 
 # Crear las pestañas del Dashboard
 tab1, tab2, tab3, tab4 = st.tabs(["🔬 Perfil y subgrupo", "🌍 Predicciones Geográficas (Carga tu Dataset)", "Análisis de Estructura USDA", "Color: región y calidad"])
@@ -130,7 +132,7 @@ with tab2:
                             opciones = sorted(X[col_name].dropna().unique().tolist())
                             inputs_usuario[col_name] = st.selectbox(f"{col_name}", opciones, key=f"predict_{col_name}", help="Selecciona la categoría de la nueva muestra, usando el vocabulario del dataset.")
 
-                if st.button("Calcular Predicción con tus Datos"):
+                if st.button("Calcular Predicción con tus Datos", key="ml_predict"):
                     # Crear DataFrame con la fila ingresada
                     df_usuario = pd.DataFrame([inputs_usuario], columns=col_features)
                     pred_resultado = modelo_personalizado.predict(df_usuario)[0]
@@ -157,3 +159,5 @@ with tab3:
 
 with tab4:
     render_color()
+
+render_study_export()

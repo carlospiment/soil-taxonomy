@@ -26,6 +26,8 @@ class DashboardTests(unittest.TestCase):
         archivo.name = f"sintetico.{extension}"
 
         def cargar(*args, **kwargs):
+            if kwargs.get("key") in ("rf_photo", "color_photo", "study_upload"):
+                return None
             if kwargs.get("key") == "profile_photos":
                 return []
             archivo.seek(0)
@@ -43,7 +45,7 @@ class DashboardTests(unittest.TestCase):
                 return
             self.assertFalse(app.error, [e.value for e in app.error])
             self.assertEqual(len(app.metric), 1)
-            app.button[0].click().run(timeout=30)
+            app.button(key="ml_predict").click().run(timeout=30)
             self.assertFalse(app.exception)
             self.assertFalse(app.error, [e.value for e in app.error])
             self.assertTrue(any("El suelo predicho es:" in s.value for s in app.success))
@@ -51,7 +53,7 @@ class DashboardTests(unittest.TestCase):
     def test_inicio(self):
         app = AppTest.from_file("app.py").run(timeout=30)
         self.assertFalse(app.exception)
-        self.assertEqual(len(app.tabs), 2)
+        self.assertEqual(len(app.tabs), 4)
 
     def test_csv_mixto_con_faltantes(self):
         self.ejecutar(self.datos(), ["pH", "Region"])

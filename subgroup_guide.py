@@ -54,6 +54,12 @@ def render_guide(route, blockers, profile_fingerprint):
     # Si cambia la evidencia, se invalidan las decisiones anteriores para evitar
     # presentar como vigente una determinación de un perfil ya modificado.
     fingerprint_key = f"guide_fingerprint_{group}"
+    restored = st.session_state.pop('study_guide', None)
+    if restored and restored.get('group') == group:
+        for code, decision in restored.get('decisions', {}).items():
+            for suffix in ('outcome', 'evidence'):
+                st.session_state[f'guide_{code}_{suffix}'] = decision[suffix]
+        st.session_state[fingerprint_key] = profile_fingerprint
     if st.session_state.get(fingerprint_key) != profile_fingerprint:
         for entry in spec["entries"]:
             for suffix in ("outcome", "evidence"):

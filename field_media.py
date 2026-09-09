@@ -78,9 +78,11 @@ def render_location_photos():
         files = st.file_uploader("Fotografías del perfil", type=["jpg", "jpeg", "png", "webp"], accept_multiple_files=True, key="profile_photos",
             help="Hasta 10 fotos, 20 MB por foto y 60 MB en total. Añade una escala y el identificador del perfil cuando sea posible.")
         st.caption("Las fotos se conservan en esta sesión. Para guardarlas, descarga el ZIP al final; el JSON por sí solo contiene únicamente sus referencias y descripciones.")
-        photos = []
+        photos = [dict(p) for p in st.session_state.get('study_photos', [])]
+        for photo in photos:
+            st.image(photo['data'], caption=photo['descripcion'] or photo['nombre_original'], width=350)
         files = files or []
-        if len(files) > 10 or sum(f.size for f in files) > 60 * 1024 * 1024:
+        if len(files) + len(photos) > 10 or sum(f.size for f in files) + sum(len(p['data']) for p in photos) > 60 * 1024 * 1024:
             st.warning("Reduce la selección a un máximo de 10 fotos y 60 MB en total.")
             files = []
         for i, file in enumerate(files):
@@ -91,8 +93,10 @@ def render_location_photos():
                 st.warning(f"{file.name}: {exc}")
                 continue
             sha = hashlib.sha256(data).hexdigest()
+            if any(p['sha256'] == sha for p in photos):
+                continue
             safe_name = re.sub(r"[^\w.\-]", "_", file.name.replace("\\", "/").split("/")[-1])
             st.image(data, caption=file.name, width=350)
             caption = st.text_input("Descripción / horizonte de la foto", key=f"photo_caption_{i}_{sha}", help="Indica qué muestra la imagen, horizonte o profundidad, orientación y escala.")
-            photos.append({"nombre_original": file.name, "ruta_zip": f"fotos/{i+1:02d}_{safe_name}", "descripcion": caption, "sha256": sha, **info, "data": data})
+            photos.append({"nombre_original": file.name, "ruta_zip": f"fotos/{len(photos)+1:02d}_{safe_name}", "descripcion": caption, "sha256": sha, **info, "data": data})
     return location, photos

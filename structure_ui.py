@@ -79,6 +79,8 @@ def render_estructura_usda():
                           "summary": summary, "raw_response": raw}
                 json.dumps(result, allow_nan=False)
             st.session_state["rf_result"] = {"identity": identity, "result": result}
+            st.session_state.setdefault('study_images', {})[metadata['sha256']] = archivo.getvalue()
+            st.session_state.setdefault('study_structures', []).append(result)
         except WorkflowError as error:
             st.error(str(error))
             return

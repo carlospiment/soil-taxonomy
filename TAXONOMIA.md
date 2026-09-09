@@ -23,7 +23,7 @@ ruta taxonómica manual. No confirma diagnósticos a partir de esos valores aisl
 6. Descarga el JSON para conservar la ficha y las decisiones, o el ZIP para incluir
    las fotos originales aceptadas. Los cambios de
    evidencia invalidan las respuestas de la guía al volver a evaluarla. El JSON
-   es una exportación; esta versión no incluye su importación.
+   conserva referencias; para recuperar un estudio completo usa el ZIP de Fase 7.
 
 ## Fotos, coordenadas y textura
 
@@ -73,6 +73,201 @@ Los criterios de subgrupo de `subgroup_keys.json` proceden de esas páginas del
 documento gubernamental y conservan su secuencia. No se mezclan ediciones.
 
 ## Verificación
+
+### Recuperación, almacenamiento y validación de campo: Fase 7
+
+Se eligió almacenamiento en archivos ZIP portátiles controlados por el usuario,
+sin base de datos ni servicio compartido. Al final de la página, `Guardar estudio
+completo (ZIP)` conserva ficha editable, UUID, tablas, fracciones calculadas,
+observaciones de color con cálculos/ROI/calibración/revisiones/aplicaciones,
+fotografías originales y resultados de estructura acumulados. No guarda claves
+API, credenciales ni modelos/datasets de la pestaña de aprendizaje automático.
+Esa pestaña es un experimento separado del estudio pedológico.
+
+Abre el archivo desde `Abrir estudio guardado` al inicio. El botón exige marcar
+el reemplazo explícito del estudio actual. La validación ocurre antes de cambiar
+la sesión: un fallo conserva el estudio abierto. Tras recuperar puedes editar
+tablas y campos y revisar observaciones; los gráficos y controles se regeneran.
+Los originales de análisis están disponibles al final para visualizar, descargar
+y volver a cargar si necesitas otra evaluación. No se ejecuta inferencia remota
+al abrir. Los resultados estructurales históricos se muestran por separado.
+
+`study_storage.py` define el esquema 1: `estudio.json`, imágenes por SHA-256 y
+`manifest.json` con hashes de todos los contenidos. Se verifica integridad,
+identidad y versiones; tablas y entradas de controles; imágenes, historial de
+revisión y correspondencia de aplicaciones. Se rechazan rutas peligrosas,
+duplicados, enlaces, ZIP cifrados, imágenes ausentes y esquemas desconocidos.
+Los archivos se leen en memoria sin extraer ni ejecutar contenido. Límites:
+100 MB comprimidos/descomprimidos, 8 MB de JSON y 200 imágenes; las fotos de
+perfil mantienen el máximo de 10 y 60 MB, y cada imagen 20 MB/40 MP.
+La memoria de trabajo puede superar el tamaño del ZIP durante la validación.
+
+Migración: acepta el ZIP anterior `perfil_taxonomico.json` + fotos originales,
+manteniendo UUID y revisiones cuando existen; si carece de trazabilidad, crea
+UUID nuevos y un historial vacío, sin inventar evaluaciones. Debe estar completo:
+si una observación anterior apunta a una foto no incluida, se rechaza. Adjunta
+el original antes de volver a exportar desde la sesión original. El JSON aislado
+no permite recuperar imágenes y no se admite como estudio completo. Exportar
+de nuevo produce esquema 1; nunca se sobrescribe el archivo original.
+
+Persistencia: la descarga requiere que el usuario guarde el archivo. No hay
+autoguardado ni almacenamiento permanente del servidor. Antes de cerrar o
+reemplazar un estudio guarda un ZIP con fecha y copia a otra ubicación; prueba
+la apertura de esa copia. Mantén varias versiones y restaura la última íntegra
+si la más reciente está dañada. No hay reparación automática de datos corruptos.
+
+Acceso: no existe listado compartido de estudios ni autenticación de usuarios.
+Los permisos/cifrado del dispositivo y del destino de respaldo protegen los ZIP;
+el archivo no está cifrado y el hash no autentica autoría. Quien posea el archivo
+puede leerlo. La app no modifica permisos del sistema. En un despliegue multiusuario
+se necesita protección de acceso al servicio, además de estas comprobaciones.
+
+Pruebas: `.\.venv\Scripts\python.exe -m unittest discover -v` incluye recuperación
+y edición en Streamlit, respaldos, migración anterior, conservación de fotos,
+cálculos y revisiones, exclusión de credenciales, rechazo de rutas/archivos
+incompatibles y conservación de la sesión ante importación fallida.
+Estas pruebas comprueban el límite de acceso de la aplicación, no las ACL de
+carpetas elegidas por el usuario ni un sistema de autenticación inexistente.
+
+La validación independiente está **pendiente**. El protocolo y plantilla están
+en [validacion_campo/PROTOCOLO.md](validacion_campo/PROTOCOLO.md).
+`field_validation.py` resume pares reales con cobertura, abstenciones,
+concordancia exacta y matrices de confusión. No contiene resultados de campo
+ni declara precisión científica. La aceptación completa requiere que un equipo
+independiente ejecute el protocolo y entregue datos e informe de desempeño.
+
+Para distribuir incluye `study_storage.py`, `storage_ui.py`, `field_validation.py`,
+`validacion_campo/` y los cambios en `app.py`, `profile_ui.py`, `field_media.py`,
+`subgroup_guide.py`, `color_ui.py` y `structure_ui.py`, junto al proyecto existente.
+No se añadieron dependencias.
+
+### Revisión humana y aplicación de color: Fase 6
+
+En la pestaña de color abre `Revisar y aplicar observaciones de color`. El historial
+está disponible aunque el cargador ya no tenga la foto. Selecciona una observación,
+registra responsable y motivo/evidencia, y acepta, corrige o rechaza. Aceptar exige
+una propuesta Munsell existente; corregir permite registrar una determinación de
+campo incluso si la imagen no produjo color. El formato/rango de notación se
+comprueba, pero no la existencia del color en una carta comercial.
+
+Guardar revisión no cambia la ficha. Para ello revisa el horizonte, campo seco o
+húmedo y transición valor anterior→confirmado; marca la confirmación y pulsa
+`Aplicar color confirmado al perfil`. Solo se actualiza ese campo del horizonte
+identificado por UUID. Se rechazan perfiles distintos, horizontes borrados,
+propuestas pendientes/rechazadas, valores anteriores distintos y doble aplicación.
+La revisión del editor se incrementa para regenerar tabla e informe con el dato.
+Esto incorpora una medición confirmada, no una clasificación taxonómica definitiva.
+
+`soil_color/validation.py` devuelve copias sin alterar la predicción. Cada revisión
+conserva responsable, motivo y fecha UTC. La aplicación añade `applications` con
+identificador, revisión asociada, responsable, fecha, campo, valor anterior y valor
+aplicado. Una observación aplicada ya no se revisa ni aplica otra vez: una nueva
+determinación puede sustituirla explícitamente. Editar la tabla posteriormente no
+se revierte desde este historial; los eventos describen aplicaciones pasadas.
+El nombre es declarado, sin autenticación ni firma; no implica acreditación.
+
+`color_review_ui.py` permite descargar el JSON revisado. El JSON/ZIP del perfil y
+el ZIP de la foto actualmente seleccionada incluyen revisiones y aplicaciones.
+El almacenamiento sigue siendo temporal en sesión. Estructura Roboflow permanece
+separada: esta fase aplica exclusivamente colores, no clases estructurales.
+
+Para publicar sube `color_review_ui.py`, `color_ui.py` y toda la carpeta
+`soil_color/`, conservando las dependencias y archivos anteriores. No hay nuevas
+dependencias. Agrega `test_color_validation` al comando de pruebas de Fase 5;
+incluye inmutabilidad de propuesta, rechazo, identidad, conflictos, aplicación
+única y flujo Streamlit con revisión sin cambio y aplicación exportada.
+
+### Referencia neutra: Fase 5, calibración parcial
+
+En el modo de estimación activa `Corregir con referencia neutra en esta foto`.
+Fotografía una referencia neutra junto al suelo, en el mismo plano y bajo la
+misma iluminación uniforme, evitando reflejos. Registra dispositivo, iluminación
+y preparación. Selecciona el interior del parche con los controles; no debe
+solaparse con píxeles útiles del suelo. Introduce su identificación y la fuente
+de su reflectancia, y el porcentaje documentado por fabricante o medición.
+No se presupone 18 % ni se admite una hoja blanca como referencia conocida.
+
+`soil_color/calibration.py` implementa un modelo diagonal experimental: cada
+ganancia es reflectancia / mediana del canal de referencia decodificado a RGB
+lineal. Multiplica el RGB lineal representativo del suelo por las ganancias y
+vuelve a codificar sRGB antes del pipeline XYZ/Lab/Munsell. Es un ajuste de balance
+y exposición, no una caracterización espectral ni una matriz multicolor de cámara.
+La adaptación Bradford D65→C de Fase 4 sigue siendo una operación separada.
+
+Se rechazan referencias con región insuficiente, oscuridad, saturación o alta
+variación, canales medianos fuera de (10,245), reflectancia fuera de [2,90] % o
+ganancias fuera de [0.25,4]. Estos límites son operativos, no criterios científicos
+validados. Poco detalle es compatible con un parche uniforme. Un RGB corregido
+fuera de [0,1] lineal impide estimar Munsell: no se recorta silenciosamente ni se
+sustituye por una estimación sin corrección.
+
+La exportación conserva foto/hash, rectángulo y calidad de referencia, reflectancia
+declarada, identificación, ganancias, versión `neutral-linear-gains-v1`, RGB
+observado/corregido y espacios antes/después. `calibrated=true` significa solamente
+que esta corrección parcial se aplicó; `scientifically_validated=false` permanece.
+No existe todavía modo científico validado, caracterización multicolor, detección
+automática de carta ni comprobación independiente de la reflectancia declarada.
+El ajuste usa el propio parche; no se presenta su error de ajuste como validación.
+La respuesta espectral, procesamiento del teléfono, iluminación no uniforme y
+metamerismo pueden mantener errores aunque el neutro quede corregido.
+
+Cambiar referencia, reflectancia, región o modo invalida el resultado visible.
+Los registros siguen pendientes y no alteran la taxonomía. No hay dependencias
+nuevas. Para publicar sube `color_ui.py` y toda la carpeta `soil_color/` conservando
+los archivos anteriores. Pruebas: añade `test_calibration` al comando de Fase 4;
+comprueba recuperación de ganancias sintéticas, bloqueo de entradas/recorte y
+flujo de interfaz, exportación y separación del dato confirmado.
+
+### Colorimetría orientativa: Fase 4
+
+Activa `Estimar Munsell orientativo (imagen no calibrada)` en la pestaña de color
+y registra la evaluación como en Fase 3. El modo de solo calidad sigue disponible.
+La propuesta permanece pendiente; no modifica los colores manuales ni la taxonomía.
+Una región rechazada o con alerta de oscuridad/saturación no produce Munsell.
+Las demás advertencias permanecen visibles junto a la estimación.
+
+`soil_color/color_spaces.py` interpreta perfiles ICC mediante Pillow/LittleCMS,
+con destino sRGB e intención colorimétrica relativa. Sin ICC asume sRGB y lo
+registra; rechaza transparencias, ICC inválidos y modos distintos de RGB/gris sin
+perfil. Esta gestión de color no calibra la cámara, exposición ni iluminación.
+
+El representante es la mediana por canal del RGB codificado sobre la muestra
+enmascarada de Fase 3, de hasta 512 px por lado. No es la media de toda la imagen
+ni necesariamente un píxel existente. Se decodifica sRGB, se calcula XYZ D65 y se
+adapta mediante Bradford a C; CIELAB utiliza blanco C y observador CIE 1931 de 2°.
+XYZ se exporta con Y del blanco igual a 1; Lab usa su escala de referencia habitual.
+
+`soil_color/munsell.py` compara por CIEDE2000 con los 2734 registros de
+`colour.MUNSELL_COLOURS['real']`, convirtiendo Y porcentual a escala 0–1, y añade
+N1–N9 mediante la función de renotación de la misma biblioteca. No utiliza el
+conjunto extrapolado `all` ni inventa una tabla RGB. Devuelve el candidato discreto
+más próximo y cuatro alternativas, sin interpolación ni restricción a páginas de
+una carta comercial. Un candidato próximo no demuestra exactitud frente al suelo:
+ΔE00 es distancia a la referencia, no probabilidad, incertidumbre ni validación.
+No hay umbral científico de aceptación ni detección de pertenencia al gamut de
+renotación; la búsqueda es orientativa incluso cuando existe un vecino lejano.
+
+La exportación incluye conversiones, estado no calibrado, algoritmo, versión de
+Colour, procedencia/tamaño/hash del catálogo y gestión ICC. La caché contiene solo
+el catálogo público; las fotos permanecen en sesión. Cambiar de modo invalida la
+evaluación visible y conserva el historial. Calibración y validación humana
+aplicada siguen pendientes de fases posteriores.
+
+Dependencia nueva: `colour-science==0.4.6` (Python >=3.10), probada en Python 3.12
+con NumPy 2.2.6. Instala también imageio; reutiliza SciPy existente. Para publicar,
+sube `requirements.txt`, `color_ui.py` y toda la carpeta `soil_color/`, conservando
+el resto del proyecto. No se requiere API ni archivos de referencia descargados
+en tiempo de ejecución.
+
+Pruebas: agrega `test_colorimetry` al comando completo de Fase 3 (72 pruebas).
+Incluyen primario rojo, blanco/negro, transferencia sRGB, un par publicado de
+CIEDE2000, un registro real de renotación y neutros, ICC inválido, transparencia,
+bloqueo por calidad y flujo Streamlit sin sobrescribir valores manuales.
+
+Referencias metodológicas:
+- [Colour 0.4.6: sRGB a XYZ](https://colour.readthedocs.io/en/v0.4.6/generated/colour.sRGB_to_XYZ.html).
+- [Colour 0.4.6: datos Munsell](https://colour.readthedocs.io/en/v0.4.6/generated/colour.MUNSELL_COLOURS.html).
+- [RIT: procedencia de renotación, iluminante C y observador 2°](https://www.rit.edu/science/munsell-color-science-lab-educational-resources).
 
 ### Región y calidad del color: Fase 3
 

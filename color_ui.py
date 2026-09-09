@@ -160,6 +160,7 @@ def render_color():
             algorithm_version=COLOR_VERSION if estimate else QUALITY_VERSION,
             context=context, quality=quality)
         archive = evaluation_archive(observation, data, metadata["formato"])
+        st.session_state.setdefault('study_images', {})[metadata['sha256']] = data
         if previous is None:
             st.session_state.visual_observations = ledger + [observation]
         st.session_state.color_qc_result = {"signature": signature, "observation": observation, "archive": archive}
