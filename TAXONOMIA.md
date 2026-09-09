@@ -27,6 +27,17 @@ ruta taxonómica manual. No confirma diagnósticos a partir de esos valores aisl
 
 ## Fotos, coordenadas y textura
 
+En el bloque 2, los encabezados de horizontes usan indicadores de color:
+🟩 observaciones de campo, 🟦 resultados de laboratorio, 🟪 cálculos automáticos
+y ⬜ métodos/procedencia. La leyenda y las ayudas explican su significado.
+Un asterisco distingue identificación, techo y base como datos básicos de cada
+horizonte. Los demás requisitos dependen de la clave y del estudio; el color
+no impone obligatoriedad universal. Las fracciones texturales se identifican
+como laboratorio, con ayuda que aclara el cálculo de la tercera fracción.
+Los indicadores solo cambian la presentación, no los nombres exportados ni
+los archivos de estudios anteriores. Los campos químicos siguen siendo entradas
+manuales hasta disponer de datos de origen y métodos para automatizarlos.
+
 - El responsable y la fecha se registran por separado. Se admiten coordenadas
   geográficas decimales o UTM con zona, hemisferio y datum. WGS 84 / UTM se
   transforma a latitud/longitud mediante pyproj; otros datums se conservan sin
