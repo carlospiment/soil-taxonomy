@@ -44,7 +44,7 @@ def nearest_munsell(lab):
                           'count': len(entries), 'sha256': digest}}
 
 
-def estimate_color(quality):
+def estimate_color(quality, calibration=None):
     result = {'stage': 'uncalibrated_color', 'munsell': None, 'calibrated': False,
               'algorithm_version': COLOR_VERSION, 'colour_version': colour.__version__,
               'rgb_observed_median': quality['metrics'].get('rgb_median'),
@@ -57,7 +57,19 @@ def estimate_color(quality):
     if any(issue['code'] in ('dark', 'clipping') for issue in quality.get('issues', [])):
         result['reason'] = 'exposure_requires_review'
         return result
-    result.update(srgb_to_spaces(result['rgb_observed_median']))
+    rgb = result['rgb_observed_median']
+    if calibration is not None:
+        from soil_color.calibration import correct_rgb
+        try:
+            rgb = correct_rgb(rgb, calibration)
+        except ValueError as error:
+            result['reason'] = str(error)
+            return result
+        result.update({'rgb_corrected': rgb, 'calibrated': True,
+                       'stage': 'neutral_reference_color', 'calibration': calibration,
+                       'observed_spaces': srgb_to_spaces(result['rgb_observed_median'])})
+        result['method'] = 'neutral linear RGB gains; ' + result['method']
+    result.update(srgb_to_spaces(rgb))
     matches = nearest_munsell(result['lab_c'])
     result.update(matches)
     result.update(matches['nearest'])

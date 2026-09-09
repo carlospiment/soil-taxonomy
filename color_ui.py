@@ -13,6 +13,7 @@ from soil_color.quality_control import QUALITY_VERSION, assess_quality
 from visual_observations import HORIZON_ID, create_observation
 from soil_color.color_spaces import load_srgb_image
 from soil_color.munsell import COLOR_VERSION, estimate_color
+from soil_color.calibration import CALIBRATION_VERSION, fit_neutral_reference
 
 
 def evaluation_archive(observation, original, image_format):
@@ -30,7 +31,7 @@ def evaluation_archive(observation, original, image_format):
 def render_color():
     st.header("Color del suelo: región y calidad")
     st.write("Selecciona una zona representativa del suelo y revisa la fotografía antes de estudiar su color.")
-    st.caption("Evaluación local y orientativa. La foto no se envía a Roboflow. La estimación de color no está calibrada ni sustituye la determinación de campo.")
+    st.caption("Evaluación local y orientativa. La foto no se envía a Roboflow. No sustituye la determinación de campo.")
     estimate = st.checkbox("Estimar Munsell orientativo (imagen no calibrada)", key="color_estimate")
 
     source = st.radio("Origen de la fotografía de color", ["Subir fotografía", "Cámara"], horizontal=True, key="color_source")
@@ -86,6 +87,36 @@ def render_color():
     st.image(masked_preview(crop, mask), caption="Región seleccionada; gris indica píxeles excluidos", width="stretch")
     st.caption("Excluye manualmente raíces, piedras, residuos, carta, sombras fuertes y reflejos. El sistema no reconoce esos objetos automáticamente. No elimines rasgos redox si son el objeto de estudio.")
 
+    calibration = None
+    calibration_requested = estimate and st.checkbox("Corregir con referencia neutra en esta foto", key="color_calibrate")
+    calibration_error = None
+    if calibration_requested:
+        st.subheader("Referencia neutra de reflectancia conocida")
+        st.caption("Debe aparecer junto al suelo, bajo la misma luz y en el mismo plano. Usa la reflectancia documentada por el fabricante o medida; una hoja blanca o un gris en pantalla no bastan. Esta corrección ajusta balance y exposición, no caracteriza todos los colores de la cámara.")
+        reference_id = st.text_input("Identificación de la carta/parche y fuente de su reflectancia", key="color_reference_id")
+        reflectance = st.number_input("Reflectancia del parche (%)", min_value=2.0, max_value=90.0, value=None, key="color_reflectance")
+        rx = st.slider("Referencia: límites horizontales (%)", 0, 100, (0, 10), key="color_reference_x")
+        ry = st.slider("Referencia: límites verticales (%)", 0, 100, (0, 10), key="color_reference_y")
+        try:
+            reference_box = rectangle_from_percent(image.size, rx, ry)
+            reference_crop, reference_mask = extract_roi(image, reference_box)
+            st.image(selection_preview(image, reference_box, []), caption="Parche de referencia seleccionado", width="stretch")
+            # La referencia no debe participar en la región útil de suelo.
+            overlap_box = [max(box[0], reference_box[0]), max(box[1], reference_box[1]),
+                           min(box[2], reference_box[2]), min(box[3], reference_box[3])]
+            if overlap_box[0] < overlap_box[2] and overlap_box[1] < overlap_box[3] and mask[overlap_box[1]-box[1]:overlap_box[3]-box[1], overlap_box[0]-box[0]:overlap_box[2]-box[0]].any():
+                raise ValueError("Excluye el parche de la región útil de suelo.")
+            if reflectance is None:
+                raise ValueError("Indica la reflectancia documentada de tu parche.")
+            calibration = fit_neutral_reference(assess_quality(reference_crop, reference_mask), reflectance / 100, reference_id)
+            calibration.update({'box': reference_box, 'image_sha256': metadata['sha256']})
+        except ValueError as error:
+            calibration_error = str(error)
+            st.warning(calibration_error)
+        if calibration_error:
+            st.session_state.pop("color_qc_result", None)
+            return
+
     selected = rows.get(horizon, {})
     snapshot = {"horizon_uid": horizon, "label": selected.get("Horizonte")}
     for field in ("Techo (cm)", "Base (cm)"):
@@ -95,7 +126,8 @@ def render_color():
                "profile_label": st.session_state.get("profile_id", ""),
                "preparation": preparation, "illumination": illumination,
                "device": device or None, "target": target,
-               "calibration": {"applied": False, "reference": None},
+               "calibration": {"requested": calibration_requested, "reference_fit": calibration,
+                               "algorithm_version": CALIBRATION_VERSION},
                "roi": {"algorithm_version": ROI_VERSION, "box": box, "exclusions": exclusions,
                        "coordinate_system": "oriented-image-pixels; origin=top-left; right/bottom exclusive"}}
     signature = hashlib.sha256(json.dumps({"context": context, "moisture": moisture,
@@ -109,11 +141,11 @@ def render_color():
         st.info("Selecciona el horizonte y la condición seca/húmeda antes de registrar la evaluación.")
     if st.button("Evaluar y registrar selección", key="color_evaluate", disabled=horizon is None or moisture == "Sin indicar"):
         quality = assess_quality(crop, mask)
-        predicted = estimate_color(quality) if estimate else {
+        predicted = estimate_color(quality, calibration=calibration) if estimate else {
             "stage": "roi_quality_only", "munsell": None,
             "rgb_observed_median": quality["metrics"].get("rgb_median")}
-        # Un registro de calidad rechazado se conserva como evidencia del intento.
-        # No asigna Munsell ni modifica las columnas manuales del horizonte.
+        context['calibration']['applied'] = predicted.get('calibrated', False)
+        # Un registro rechazado se conserva; nunca modifica columnas manuales.
         context["evaluation_signature"] = signature
         ledger = st.session_state.visual_observations
         previous = next((o for o in ledger if o.get("context", {}).get("evaluation_signature") == signature), None)
@@ -122,7 +154,7 @@ def render_color():
             image_sha256=metadata["sha256"], kind="color",
             moisture_state={"Seco": "dry", "Húmedo": "moist"}[moisture],
             predicted_value=predicted,
-            method="uncalibrated-renotation" if estimate else "roi-quality-exploratory",
+            method=("neutral-reference-renotation" if calibration else "uncalibrated-renotation") if estimate else "roi-quality-exploratory",
             algorithm_version=COLOR_VERSION if estimate else QUALITY_VERSION,
             context=context, quality=quality)
         archive = evaluation_archive(observation, data, metadata["formato"])
@@ -149,9 +181,11 @@ def render_color():
         st.json(quality)
         prediction = observation["predicted_value"]
         if prediction.get("status") == "not_estimated":
-            st.warning("No se estimó Munsell: ajusta la región o la exposición y repite la evaluación. Los indicadores se conservaron.")
+            st.warning("No se estimó Munsell: revisa calidad, exposición o corrección fuera de rango. Los indicadores se conservaron.")
         if prediction.get("munsell"):
-            st.subheader("Munsell estimado — imagen no calibrada")
+            st.subheader("Munsell estimado — corrección con referencia neutra" if prediction.get('calibrated') else "Munsell estimado — imagen no calibrada")
+            if prediction.get('calibrated'):
+                st.caption("Calibración parcial de balance y exposición, sin validación científica independiente. No equivale a caracterización con carta multicolor.")
             st.write(prediction["munsell"])
             st.caption("Candidato más próximo en la renotación discreta. ΔE00 mide distancia al candidato, no confianza ni precisión frente al suelo real. Las alternativas pueden no existir en tu carta de campo.")
             st.write(f"Distancia ΔE00: {prediction['delta_e00']:.2f}")
