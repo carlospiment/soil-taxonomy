@@ -1,4 +1,4 @@
-"""Fase 3: ROI y calidad exploratoria; registra propuestas, nunca datos confirmados."""
+"""ROI, calidad y estimación orientativa; nunca aplica datos confirmados."""
 import hashlib
 import io
 import json
@@ -11,6 +11,8 @@ from image_io import STRUCTURE_POLICY, load_rgb_image
 from soil_color.roi import ROI_VERSION, extract_roi, masked_preview, rectangle_from_percent, selection_preview
 from soil_color.quality_control import QUALITY_VERSION, assess_quality
 from visual_observations import HORIZON_ID, create_observation
+from soil_color.color_spaces import load_srgb_image
+from soil_color.munsell import COLOR_VERSION, estimate_color
 
 
 def evaluation_archive(observation, original, image_format):
@@ -28,7 +30,8 @@ def evaluation_archive(observation, original, image_format):
 def render_color():
     st.header("Color del suelo: región y calidad")
     st.write("Selecciona una zona representativa del suelo y revisa la fotografía antes de estudiar su color.")
-    st.caption("Evaluación local y orientativa. Esta fase no calibra la imagen ni calcula Munsell, XYZ o Lab. La foto no se envía a Roboflow.")
+    st.caption("Evaluación local y orientativa. La foto no se envía a Roboflow. La estimación de color no está calibrada ni sustituye la determinación de campo.")
+    estimate = st.checkbox("Estimar Munsell orientativo (imagen no calibrada)", key="color_estimate")
 
     source = st.radio("Origen de la fotografía de color", ["Subir fotografía", "Cámara"], horizontal=True, key="color_source")
     if source == "Cámara":
@@ -40,7 +43,7 @@ def render_color():
         return
     data = uploaded.getvalue()
     try:
-        image, metadata = load_rgb_image(data, STRUCTURE_POLICY)
+        image, metadata = load_srgb_image(data) if estimate else load_rgb_image(data, STRUCTURE_POLICY)
     except ValueError as error:
         st.session_state.pop("color_qc_result", None)
         st.error(str(error))
@@ -96,7 +99,8 @@ def render_color():
                "roi": {"algorithm_version": ROI_VERSION, "box": box, "exclusions": exclusions,
                        "coordinate_system": "oriented-image-pixels; origin=top-left; right/bottom exclusive"}}
     signature = hashlib.sha256(json.dumps({"context": context, "moisture": moisture,
-        "profile_uid": st.session_state.profile_uid, "quality_version": QUALITY_VERSION},
+        "profile_uid": st.session_state.profile_uid, "quality_version": QUALITY_VERSION,
+        "color_version": COLOR_VERSION if estimate else None},
         sort_keys=True, allow_nan=False).encode()).hexdigest()
     saved = st.session_state.get("color_qc_result")
     if saved and saved["signature"] != signature:
@@ -105,6 +109,9 @@ def render_color():
         st.info("Selecciona el horizonte y la condición seca/húmeda antes de registrar la evaluación.")
     if st.button("Evaluar y registrar selección", key="color_evaluate", disabled=horizon is None or moisture == "Sin indicar"):
         quality = assess_quality(crop, mask)
+        predicted = estimate_color(quality) if estimate else {
+            "stage": "roi_quality_only", "munsell": None,
+            "rgb_observed_median": quality["metrics"].get("rgb_median")}
         # Un registro de calidad rechazado se conserva como evidencia del intento.
         # No asigna Munsell ni modifica las columnas manuales del horizonte.
         context["evaluation_signature"] = signature
@@ -114,9 +121,9 @@ def render_color():
             profile_uid=st.session_state.profile_uid, horizon_uid=horizon,
             image_sha256=metadata["sha256"], kind="color",
             moisture_state={"Seco": "dry", "Húmedo": "moist"}[moisture],
-            predicted_value={"stage": "roi_quality_only", "munsell": None,
-                             "rgb_observed_median": quality["metrics"].get("rgb_median")},
-            method="roi-quality-exploratory", algorithm_version=QUALITY_VERSION,
+            predicted_value=predicted,
+            method="uncalibrated-renotation" if estimate else "roi-quality-exploratory",
+            algorithm_version=COLOR_VERSION if estimate else QUALITY_VERSION,
             context=context, quality=quality)
         archive = evaluation_archive(observation, data, metadata["formato"])
         if previous is None:
@@ -140,6 +147,17 @@ def render_color():
             st.write("• " + issue["message"])
         st.caption("Umbrales exploratorios, todavía no validados con muestras de suelo. Oscuridad puede ser color real; poco detalle puede ser uniformidad y no desenfoque. RGB describe la imagen, no un color absoluto.")
         st.json(quality)
+        prediction = observation["predicted_value"]
+        if prediction.get("status") == "not_estimated":
+            st.warning("No se estimó Munsell: ajusta la región o la exposición y repite la evaluación. Los indicadores se conservaron.")
+        if prediction.get("munsell"):
+            st.subheader("Munsell estimado — imagen no calibrada")
+            st.write(prediction["munsell"])
+            st.caption("Candidato más próximo en la renotación discreta. ΔE00 mide distancia al candidato, no confianza ni precisión frente al suelo real. Las alternativas pueden no existir en tu carta de campo.")
+            st.write(f"Distancia ΔE00: {prediction['delta_e00']:.2f}")
+            st.dataframe(prediction["alternatives"], hide_index=True)
+            with st.expander("Conversiones y trazabilidad del color"):
+                st.json(prediction)
         st.download_button("Descargar evaluación e imagen original (ZIP)", saved["archive"],
                            "evaluacion_color.zip", "application/zip", key="color_download")
         st.caption("Selección registrada como pendiente en esta sesión. El ZIP incluye la foto y los indicadores; la ficha del perfil incluye la observación, pero solo incluye esta foto si también la adjuntas allí. Descarga antes de cerrar. No hay guardado permanente ni validación humana aplicada.")

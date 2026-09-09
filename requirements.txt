@@ -7,3 +7,5 @@ plotly>=5.18,<7
 pyproj>=3.6,<4
 Pillow>=10,<13
 inference-sdk>=1.5.0,<2
+requests>=2.33,<3
+colour-science==0.4.6
