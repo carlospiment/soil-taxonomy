@@ -18,6 +18,14 @@ from texture import complete_texture, AUTO
 
 
 class StudyTests(unittest.TestCase):
+    def test_export_without_profile_does_not_crash_or_invent_report(self):
+        with patch('storage_ui.build_study') as build:
+            app = AppTest.from_string('from storage_ui import render_study_export\nrender_study_export()').run(timeout=30)
+            self.assertFalse(app.exception)
+            self.assertTrue(any('todavía no está disponible' in w.value for w in app.warning))
+            self.assertNotIn('study_report', app.session_state)
+            build.assert_not_called()
+
     @classmethod
     def setUpClass(cls):
         app = AppTest.from_file('app.py').run(timeout=30)
