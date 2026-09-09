@@ -5,7 +5,7 @@ import json
 import math
 import re
 import zipfile
-from PIL import Image, UnidentifiedImageError
+from image_io import PROFILE_POLICY, inspect_image
 from pyproj import Transformer
 
 
@@ -24,19 +24,7 @@ def utm_to_geographic(zone, hemisphere, easting, northing):
 
 
 def validate_photo(data):
-    if len(data) > 20 * 1024 * 1024:
-        raise ValueError("La fotografía supera 20 MB.")
-    try:
-        with Image.open(io.BytesIO(data)) as im:
-            if im.format not in ("JPEG", "PNG", "WEBP"):
-                raise ValueError("Formato no admitido; usa JPG, PNG o WEBP.")
-            if im.width * im.height > 40_000_000:
-                raise ValueError("La imagen supera 40 megapíxeles.")
-            info = {"ancho_px": im.width, "alto_px": im.height, "formato": im.format}
-            im.verify()
-    except (UnidentifiedImageError, OSError, Image.DecompressionBombError) as exc:
-        raise ValueError("El archivo no es una imagen válida o está dañado.") from exc
-    return info
+    return inspect_image(data, PROFILE_POLICY)
 
 
 def make_archive(report, photos):

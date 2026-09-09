@@ -7,12 +7,17 @@ from field_help import help_for, table_help
 from horizon_editor import render_horizons
 from field_media import render_location_photos, make_archive
 from subgroup_guide import render_guide
+from visual_observations import HORIZON_ID, extend_report, new_id
 from soil_profile import (
     SOURCE_URL, EDITION, STATES, DIAGNOSTICS, validate_profile, evaluate_route,
 )
 
 
 def render_profile():
+    if "profile_uid" not in st.session_state:
+        st.session_state.profile_uid = new_id()
+    if "visual_observations" not in st.session_state:
+        st.session_state.visual_observations = []
     st.header("Perfil pedológico e identificación al subgrupo")
     st.write("Registra las evidencias y documenta cada paso de las claves: orden → suborden → gran grupo → subgrupo.")
     st.info("Este módulo organiza una determinación asistida. Incluye claves guiadas de Hapludults y Dystrudepts; los demás grupos requieren la clave oficial. Un dato vacío significa no medido, no cero; un diagnóstico no evaluado no equivale a ausente.")
@@ -87,7 +92,13 @@ def render_profile():
         }), key="profile_extra")
 
     records = json.loads(horizons.to_json(orient="records"))
-    records = [r for r in records if any(v is not None and str(v).strip() for v in r.values())]
+    populated_indices = [i for i, r in enumerate(records) if any(v is not None and str(v).strip() for v in r.values())]
+    records = [records[i] for i in populated_indices]
+    horizon_refs = [{
+        "horizon_uid": st.session_state.horizon_rows[i][HORIZON_ID],
+        "row_number": n + 1,
+        "label": records[n].get("Horizonte"),
+    } for n, i in enumerate(populated_indices)]
     diagnostic_records = json.loads(diagnostics.to_json(orient="records"))
     errors, pending = validate_profile(records, diagnostic_records, depth)
     if location and not location.get("completa"):
@@ -154,6 +165,11 @@ def render_profile():
     report["clave_guiada"] = guide
     if guide and guide.get("subgroup"):
         report["estado"] = "Subgrupo por clave asistida; condicionado a la evidencia declarada"
+    # La trazabilidad no forma parte de la huella de evidencia taxonómica:
+    # registrar/revisar una propuesta no equivale a modificar el perfil.
+    report = extend_report(report, profile_uid=st.session_state.profile_uid,
+                           horizon_refs=horizon_refs,
+                           observations=st.session_state.visual_observations)
     st.download_button("Descargar ficha y ruta (JSON)", json.dumps(report, ensure_ascii=False, indent=2, allow_nan=False), "perfil_taxonomico.json", "application/json", key="profile_download")
     st.download_button("Descargar ficha + fotos (ZIP)", make_archive(report, photos), "perfil_con_fotos.zip", "application/zip", key="profile_download_zip",
         help="Incluye el JSON con coordenadas, fecha, resultados y decisiones, más los archivos originales de las fotos aceptadas.")

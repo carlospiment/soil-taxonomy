@@ -3,6 +3,7 @@ import streamlit as st
 from soil_profile import HORIZON_COLUMNS, TEXT_COLUMNS
 from texture import AUTO, FRACTIONS, apply_editor_changes, texture_figure, ENGLISH
 from field_help import column_help
+from visual_observations import ensure_horizon_ids
 
 
 def render_horizons():
@@ -15,9 +16,11 @@ def render_horizons():
     editor_key = f"profile_horizons_{st.session_state.horizon_revision}"
 
     def commit():
-        st.session_state.horizon_rows = apply_editor_changes(st.session_state.horizon_rows, st.session_state[editor_key])
+        st.session_state.horizon_rows = ensure_horizon_ids(
+            apply_editor_changes(st.session_state.horizon_rows, st.session_state[editor_key]))
         st.session_state.horizon_revision += 1
 
+    st.session_state.horizon_rows = ensure_horizon_ids(st.session_state.horizon_rows)
     rows = st.session_state.horizon_rows
     initial = pd.DataFrame({c: pd.Series([r.get(c) for r in rows], dtype="object" if c in TEXT_COLUMNS or c == AUTO else "float64") for c in columns})
     configs = {}
