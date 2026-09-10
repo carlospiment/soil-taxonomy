@@ -37,6 +37,18 @@ def _string(value):
 
 
 def _validate_controls(report):
+    description = report.get('descripcion_asistida', {})
+    if not isinstance(description, dict) or set(description) - {'sitio', 'horizontes'}:
+        raise ValueError('Descripción asistida incompatible.')
+    for section in ('sitio', 'horizontes'):
+        if not isinstance(description.get(section, {}), dict):
+            raise ValueError('Descripción asistida incompatible.')
+    for row in [description.get('sitio', {})] + list(description.get('horizontes', {}).values()):
+        if not isinstance(row, dict) or any(not isinstance(k, str) or (v is not None and type(v) not in (str, int, float)) for k, v in row.items()):
+            raise ValueError('Campo de descripción asistida incompatible.')
+        for value in row.values():
+            if type(value) in (int, float):
+                _number(value)
     review = report.get('revision_ruta_manual', {})
     if not isinstance(review, dict):
         raise ValueError('Revisión de la ruta incompatible.')
@@ -158,6 +170,9 @@ def restore_state(report):
     state['study_tables']['profile_laboratory'] = deepcopy(report.get('laboratorio', []))
     state['study_laboratory_legacy'] = deepcopy(report.get('laboratorio_historico_no_taxonomico', []))
     state['profile_manual_review'] = deepcopy(report.get('revision_ruta_manual', {}))
+    description = report.get('descripcion_asistida', {})
+    state['profile_site_description'] = deepcopy(description.get('sitio', {}))
+    state['profile_horizon_descriptions'] = deepcopy(description.get('horizontes', {}))
     location = report.get('ubicacion', {})
     state['location_mode'] = location.get('sistema', 'Sin registrar')
     datum = location.get('datum', 'WGS 84')

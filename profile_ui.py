@@ -15,16 +15,52 @@ from soil_profile import (
 
 
 def study_editor(data, **kwargs):
-    saved = st.session_state.get('study_tables', {}).get(kwargs['key'])
-    frame = pd.DataFrame(saved) if saved is not None else data
-    if kwargs['key'] == 'profile_diagnostics':
-        frame = frame.copy()
-        frame['Término USDA'] = frame['Diagnóstico'].map(DIAGNOSTIC_ENGLISH)
-        kwargs['column_config'] = {**kwargs.get('column_config', {}), 'Diagnóstico': None}
-        kwargs['disabled'] = list(kwargs.get('disabled', [])) + ['Término USDA']
-        kwargs['column_order'] = ['Término USDA', 'Estado', 'Techo (cm)', 'Base (cm)', 'Evidencia / método / criterio']
-        return st.data_editor(frame, **kwargs).drop(columns=['Término USDA'])
-    return st.data_editor(frame, **kwargs)
+    from assisted_forms import field, interval, choose_record
+    from subgroup_guide import KEYS
+    key = kwargs['key']
+    tables = st.session_state.setdefault('study_tables', {})
+    rows = tables.setdefault(key, json.loads(data.to_json(orient='records')))
+    if key == 'profile_route':
+        for i, row in enumerate(rows):
+            with st.expander(f"{i+1}. {row['Nivel']}", expanded=i == 0):
+                options = ['Alfisols', 'Andisols', 'Aridisols', 'Entisols', 'Gelisols', 'Histosols', 'Inceptisols', 'Mollisols', 'Oxisols', 'Spodosols', 'Ultisols', 'Vertisols'] if i == 0 else None
+                if i in (1, 2):
+                    options = [spec['path'][i] for spec in KEYS.values() if spec['path'][:i] == [r.get('Taxón') for r in rows[:i]]]
+                if i == 3:
+                    options = [e['name'] for e in KEYS.get(rows[2].get('Taxón'), {}).get('entries', [])]
+                custom = st.checkbox('Transcribir otro taxón de la clave oficial', key=f'{key}_{i}_custom') if i else False
+                field(row, 'Taxón', f'{key}_{i}_taxon', options=None if custom else options, help='Lista completa de órdenes; en niveles inferiores solo se sugieren rutas de la cobertura guiada. Para otro taxón, transcribe su nombre y referencia.')
+                field(row, 'Clave / página', f'{key}_{i}_reference')
+                field(row, 'Evidencia y exclusión de anteriores', f'{key}_{i}_evidence', multiline=True)
+                field(row, 'Revisión', f'{key}_{i}_review', options=['Pendiente', 'No cumple', 'Cumple; anteriores descartados'])
+                for col in ('Taxón', 'Clave / página', 'Evidencia y exclusión de anteriores'):
+                    row[col] = row.get(col) or ''
+                row['Revisión'] = row.get('Revisión') or 'Pendiente'
+                if i and any(r.get('Revisión') != 'Cumple; anteriores descartados' for r in rows[:i]):
+                    st.warning('Completa y revisa los niveles anteriores antes de concluir este nivel.')
+        return pd.DataFrame(rows)
+    description = (lambda r: DIAGNOSTIC_ENGLISH[r['Diagnóstico']] + ' · ' + str(r.get('Estado') or 'No evaluado')) if key == 'profile_diagnostics' else (lambda r: r['Parámetro'])
+    index = choose_record(rows, key+'_selected', 'Diagnóstico que deseas evaluar' if key == 'profile_diagnostics' else 'Medida adicional que deseas registrar', description)
+    row = rows[index]
+    prefix = f'{key}_{index}'
+    if key == 'profile_diagnostics':
+        state = field(row, 'Estado', prefix+'_status', options=STATES)
+        row['Estado'] = state or 'No evaluado'
+        if state in ('Presente', 'Ausente'):
+            interval(row, prefix, st.session_state.get('profile_depth'))
+            field(row, 'Evidencia / método / criterio', prefix+'_evidence', multiline=True, help='Documenta cada requisito, método, intervalo y exclusión. Un rasgo aislado no confirma el diagnóstico.')
+            if not row.get('Evidencia / método / criterio'):
+                st.warning('Registra evidencia para sostener la presencia o ausencia declarada.')
+        st.caption('Puedes evaluar solo los diagnósticos pertinentes al recorrido. Los demás permanecen como no evaluados.')
+    else:
+        st.caption(EXTRA_USES.get(row['Parámetro'], 'Documenta el criterio y método de la clave.'))
+        maximum = 100. if row['Unidad'] == '%' and row['Parámetro'] != 'Pendiente' else 366. if row['Unidad'] == 'días' else None
+        field(row, 'Valor', prefix+'_value', label=f"{row['Parámetro']} ({row['Unidad']})", numeric=True, maximum=maximum)
+        field(row, 'Intervalo / método / evidencia', prefix+'_evidence', multiline=True)
+        local_errors, _ = validate_extra([row], st.session_state.get('profile_depth'))
+        for error in local_errors:
+            st.error(error)
+    return pd.DataFrame(rows)
 
 
 def render_profile():
@@ -39,7 +75,9 @@ def render_profile():
     summary = st.container()
     st.caption('Etapas: documentación del pedón → evidencias por horizonte → diagnósticos y rasgos → claves → determinación. Completa las mediciones que exija tu recorrido; la aplicación no deduce un diagnóstico de un valor aislado.')
     with st.expander('Qué documenta cada campo y dónde se utiliza en USDA'):
-        st.dataframe(pd.DataFrame([{'Campo': k, 'Función / referencia USDA 2022': v} for k, v in {**HORIZON_USES, **EXTRA_USES}.items()]), hide_index=True)
+        references = {**HORIZON_USES, **EXTRA_USES}
+        topic = st.selectbox('Campo sobre el que necesitas ayuda', list(references), key='profile_help_topic')
+        st.write(references[topic])
         st.caption('Las referencias indican usos posibles. La entrada oficial elegida determina si un dato es necesario y qué método, intervalo y combinaciones AND/OR se aplican. El catálogo no sustituye las definiciones completas.')
 
     with st.expander("1. Documentación del pedón, profundidad y regímenes", expanded=True):
@@ -62,8 +100,10 @@ def render_profile():
             climate_evidence = st.text_area("Evidencia de los regímenes: profundidad, sección de control, período y método", key="profile_climate_evidence", help=help_for('profile_climate_evidence'))
             st.caption('Términos USDA: aridic/torric, udic, perudic, ustic, xeric, aquic y peraquic. Aquic conditions se evalúan además en los rasgos diagnósticos; no se deducen solo del régimen seleccionado. Temperatura: gelic, cryic, frigid, mesic, thermic, hyperthermic y variantes iso según definición.')
     location, photos = render_location_photos()
+    from usda_capture import render_site
+    site_description = render_site()
     with st.expander("2. Descripción y laboratorio por horizonte", expanded=True):
-        st.caption("Añade una fila por horizonte o intervalo de muestreo. Porcentajes texturales sobre tierra fina. Mantén separados los métodos de saturación de bases y las unidades de CIC del suelo y de la arcilla.")
+        st.caption("Completa una ficha por horizonte o intervalo. Porcentajes texturales sobre tierra fina; conserva el método y base de cada medición.")
         horizons, derived_fractions = render_horizons()
     with st.expander("2b. Determinaciones de laboratorio para la clave USDA", expanded=False):
         laboratory_rows = render_laboratory(depth)
@@ -71,7 +111,8 @@ def render_profile():
         st.caption("Marca Presente solo si se cumplen todos los criterios de la definición, incluidos espesor, profundidad y método. Una designación Bt o Bw no confirma por sí misma un horizonte diagnóstico.")
         st.markdown(f'[Definiciones oficiales: capítulo 3, Keys 2022]({SOURCE_URL}#page=19). Conserva en la evidencia el nombre oficial, sección o página y los requisitos evaluados.')
         with st.expander('Correspondencia de términos con USDA'):
-            st.dataframe(pd.DataFrame([{'Término de la ficha': k, 'Término o criterio oficial': v} for k, v in DIAGNOSTIC_ENGLISH.items()]), hide_index=True)
+            term = st.selectbox('Término que deseas consultar', list(DIAGNOSTIC_ENGLISH), key='profile_diagnostic_help')
+            st.write(DIAGNOSTIC_ENGLISH[term])
             st.caption('Los rasgos vérticos y la cementación por hierro se documentan como evidencias; estas etiquetas no confirman por sí mismas un horizonte diagnóstico.')
         diagnostics = study_editor(pd.DataFrame({
             "Diagnóstico": DIAGNOSTICS, "Estado": ["No evaluado"] * len(DIAGNOSTICS),
@@ -195,6 +236,7 @@ def render_profile():
         "grietas_duracion_dias": cracks_days, "otros_rasgos": other,
         "medidas_adicionales": extra_records,
         "laboratorio": laboratory_rows,
+        "descripcion_asistida": {'sitio': site_description, 'horizontes': st.session_state.get('profile_horizon_descriptions', {})},
         "laboratorio_historico_no_taxonomico": st.session_state.get('study_laboratory_legacy_current', []),
         "pendientes_documentacion": documentation,
         "ruta": route_records, "errores": errors, "pendientes": pending,

@@ -26,7 +26,7 @@ TAXONOMIC_CATALOG = {name: CATALOG[name] for name in LAB_USES}
 COLUMNS = ['Muestra', 'Horizonte / intervalo', 'Techo (cm)', 'Base (cm)',
            'Laboratorio / informe', 'Fecha del análisis', 'Parámetro', 'Resultado',
            'Unidad', 'Base de reporte', 'Método / extractante', 'Relación suelo:solución',
-           'Denominador / fórmula', 'Estado del laboratorio', 'Observaciones', 'Criterio USDA / clave / página']
+           'Denominador / fórmula', 'Estado del laboratorio', 'Observaciones', 'Criterio USDA / clave / página', 'Detalle del método']
 STATES = ['No informado', 'Muy bajo', 'Bajo', 'Medio', 'Alto', 'Muy alto', 'Aceptable', 'Otro']
 
 
@@ -103,6 +103,8 @@ def laboratory_issues(rows, depth=None):
             absent = [c for c in fields if not str(row.get(c) or '').strip() or row.get(c) == 'No informada']
             if absent:
                 pending.append(prefix + 'completar ' + ', '.join(absent) + '.')
+            if row.get('Método / extractante') == 'Otro: documentar' and not str(row.get('Detalle del método') or '').strip():
+                pending.append(prefix + 'documentar el método elegido como otro.')
             top, bottom = row.get('Techo (cm)'), row.get('Base (cm)')
             if top is None or bottom is None:
                 pending.append(prefix + 'registrar techo y base de la muestra.')
@@ -121,50 +123,66 @@ def laboratory_issues(rows, depth=None):
 
 def render_laboratory(depth=None):
     import json
-    import pandas as pd
     import streamlit as st
-    st.caption('Una fila por determinación y muestra. Puedes pegar filas desde una hoja de cálculo. Conserva el método del informe; un dato vacío significa no medido.')
-    st.info('Registra únicamente determinaciones utilizadas por un criterio de USDA Soil Taxonomy. Indica la clave o definición, método, unidad, base e intervalo. No se interpretan fertilidad ni necesidades de fertilización.')
-    with st.expander('Catálogo de parámetros y unidades admitidas'):
-        st.dataframe(pd.DataFrame([{'Parámetro': k, 'Unidades admitidas': ', '.join(v), 'Uso y referencia USDA 2022': LAB_USES[k]} for k, v in TAXONOMIC_CATALOG.items()]), hide_index=True)
-        st.caption('No se intercambian métodos: pH en agua y KCl, saturación por NH₄OAc y suma de cationes, CIC por kg de suelo y por kg de arcilla son determinaciones diferentes. Documenta el método exigido por la entrada elegida.')
-    saved = st.session_state.get('study_tables', {}).get('profile_laboratory', [])
-    visible = [r for r in saved if r.get('Parámetro') in TAXONOMIC_CATALOG]
-    legacy = st.session_state.get('study_laboratory_legacy', []) + [r for r in saved if r.get('Parámetro') not in TAXONOMIC_CATALOG or r.get('Estado del laboratorio') not in (None, '', 'No informado')]
-    # A legacy row may contain both a usable measurement and an agronomic rating.
-    # Preserve its original in the history without copying the rating to evidence.
-    legacy = list({json.dumps(r, sort_keys=True, ensure_ascii=False): r for r in legacy}.values())
-    st.session_state.study_laboratory_legacy_current = legacy
-    visible_columns = [c for c in COLUMNS if c != 'Estado del laboratorio']
-    frame = pd.DataFrame({c: pd.Series([r.get(c) for r in visible], dtype='float64' if c in ('Techo (cm)', 'Base (cm)') else 'object') for c in visible_columns})
-    config = {
-        'Parámetro': st.column_config.SelectboxColumn(options=list(TAXONOMIC_CATALOG), required=True),
-        'Unidad': st.column_config.SelectboxColumn(options=['No informada'] + list(dict.fromkeys(u for units in TAXONOMIC_CATALOG.values() for u in units))),
-        'Base de reporte': st.column_config.SelectboxColumn(options=['No informada', 'Suelo seco (masa)', 'Suelo por volumen', 'Extracto / solución', 'Arcilla']),
-        'Criterio USDA / clave / página': st.column_config.TextColumn(help='Entrada o definición de Keys to Soil Taxonomy 2022 que utiliza este dato. Confirma allí el método y profundidad exigidos.'),
-        'Resultado': st.column_config.TextColumn(help='Valor original: 5.13, 0,02, <0.02 o ND. ND conserva el estado sin sustituirlo por cero.'),
-        'Denominador / fórmula': st.column_config.TextColumn(help='Para saturaciones: CIC pH 7, CICE o suma de bases, según informe. Para relaciones, transcribe la fórmula.'),
-        'Fecha del análisis': st.column_config.TextColumn(help='Fecha tal como aparece en el informe, preferiblemente AAAA-MM-DD.'),
-    }
-    for c in ('Techo (cm)', 'Base (cm)'):
-        config[c] = st.column_config.NumberColumn(min_value=0.0)
-    edited = st.data_editor(frame, num_rows='dynamic', hide_index=True, column_config=config, key='profile_laboratory')
-    rows = [r for r in json.loads(edited.to_json(orient='records')) if any(v is not None and str(v).strip() for v in r.values())]
-    normalized = []
-    errors, pending = laboratory_issues(rows, depth)
+    from assisted_forms import field, interval, choose_record
+    from uuid import uuid4
+    st.caption('Una ficha por determinación. Selecciona el parámetro y registra el valor original, con su método y unidad. No se infieren diagnósticos ni fertilidad.')
+    tables = st.session_state.setdefault('study_tables', {})
+    saved = tables.setdefault('profile_laboratory', [])
+    legacy = st.session_state.get('study_laboratory_legacy', []) + [r for r in saved if r.get('Parámetro') not in TAXONOMIC_CATALOG and r.get('Parámetro') is not None or r.get('Estado del laboratorio') not in (None, '', 'No informado')]
+    st.session_state.study_laboratory_legacy_current = list({json.dumps(r, sort_keys=True, ensure_ascii=False): r for r in legacy}.values())
+    rows = [r for r in saved if r.get('Parámetro') in TAXONOMIC_CATALOG or r.get('Parámetro') is None]
+    tables['profile_laboratory'] = rows
+    if st.button('Añadir análisis', key='profile_add_lab'):
+        rows.append({})
+        st.session_state['profile_lab_selected'] = len(rows)-1
+        st.rerun()
+    if st.session_state.get('profile_removed_lab') and st.button('Restaurar último análisis retirado', key='profile_restore_lab'):
+        i, item = st.session_state.pop('profile_removed_lab')
+        rows.insert(min(i, len(rows)), item)
+        st.rerun()
+    if not rows:
+        st.info('Añade únicamente análisis que respalden la clave que estás evaluando.')
+        return []
+    index = choose_record(rows, 'profile_lab_selected', 'Análisis que deseas completar', lambda r: (r.get('Muestra') or 'Sin muestra') + ' · ' + (r.get('Parámetro') or 'Sin parámetro'))
+    row = rows[index]
+    key = f'profile_lab_{index}'
+    name = field(row, 'Parámetro', key+'_parameter', options=list(TAXONOMIC_CATALOG))
+    if name:
+        st.caption(LAB_USES[name])
+        field(row, 'Resultado', key+'_result', help='Resultado original: 5.13, 0,02, <0,02 o ND. Un resultado ausente no se sustituye por cero.')
+        unit = field(row, 'Unidad', key+'_unit', options=list(TAXONOMIC_CATALOG[name]))
+        if unit and unit not in TAXONOMIC_CATALOG[name]:
+            st.error('La unidad anterior no corresponde al parámetro. Selecciona una unidad compatible.')
+        field(row, 'Base de reporte', key+'_basis', options=['Suelo seco (masa)', 'Suelo por volumen', 'Extracto / solución', 'Arcilla'])
+        methods = (['Agua', 'KCl', 'CaCl₂'] if name == 'pH' else ['Extracto de pasta saturada'] if name == 'Conductividad eléctrica' else ['Oxalato de amonio'] if name in ('Al oxalato', 'Fe oxalato', 'ODOE') else ['NH₄OAc pH 7', 'Suma de cationes', 'KCl'] if ('intercambiable' in name or 'CIC' in name or name in ('Saturación de bases', 'Saturación de Na', 'Suma de bases')) else [])
+        method = field(row, 'Método / extractante', key+'_method', options=methods + ['Otro: documentar'], help='Selecciona el método del informe; confirma su adecuación en la clave. No se convierten métodos entre sí.')
+        if method == 'Otro: documentar':
+            field(row, 'Detalle del método', key+'_method_detail', multiline=True, help='Nombre completo del procedimiento, preparación y referencia del laboratorio.')
+        if name == 'pH':
+            field(row, 'Relación suelo:solución', key+'_ratio', options=['1:1', '1:2', '1:2.5', '1:5', 'Pasta saturada', 'Otra: documentar'])
+        if 'CIC' in name or name in ('Saturación de bases', 'Saturación de Na', 'Suma de bases'):
+            field(row, 'Denominador / fórmula', key+'_formula', multiline=True)
+    field(row, 'Muestra', key+'_sample')
+    horizon_labels = [r.get('Horizonte') for r in st.session_state.get('horizon_rows', []) if r.get('Horizonte')]
+    field(row, 'Horizonte / intervalo', key+'_horizon', options=list(dict.fromkeys(horizon_labels)), help='La asociación no copia profundidades automáticamente: confirma el intervalo realmente analizado.')
+    interval(row, key, depth)
+    for col in ('Laboratorio / informe', 'Fecha del análisis', 'Criterio USDA / clave / página'):
+        field(row, col, key+'_'+col)
+    field(row, 'Observaciones', key+'_notes', multiline=True)
+    errors, pending = laboratory_issues([row], depth)
     for error in errors:
         st.error(error)
     for item in pending:
         st.warning(item)
-    for index, row in enumerate(rows, 1):
-        try:
-            validate_rows([row])
-            result = normalize_result(row)
-            normalized.append({'Fila': index, 'Muestra': row.get('Muestra'), 'Parámetro': row['Parámetro'], **result})
-        except ValueError:
-            pass  # Already included in the shared error list.
-    if normalized:
-        st.markdown('**Resultados normalizados**')
-        st.dataframe(pd.DataFrame(normalized), hide_index=True)
-    st.caption('Conversión de unidades: meq/100 g = cmolc/kg; 1 mS/cm = 1 dS/m. No se convierten métodos ni se transfieren resultados automáticamente a los horizontes. Los límites < o > se conservan y deben interpretarse en la clave.')
-    return rows
+    try:
+        result = normalize_result(row)
+        if result['valor'] is not None:
+            st.write(f"Resultado normalizado: **{result['calificador']} {result['valor']:g} {result['unidad']}**")
+    except ValueError:
+        pass
+    if st.button('Retirar este análisis', key=key+'_remove'):
+        st.session_state.profile_removed_lab = (index, rows.pop(index))
+        st.session_state.pop('profile_lab_selected', None)
+        st.rerun()
+    return [{c: r.get(c) for c in COLUMNS if c != 'Estado del laboratorio'} for r in rows if any(v not in (None, '') for v in r.values())]

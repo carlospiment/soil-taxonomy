@@ -107,6 +107,12 @@ def evidence_fingerprint(report):
               'otros_rasgos', 'medidas_adicionales', 'laboratorio')
     payload = {key: report.get(key) for key in fields}
     payload['ruta'] = report.get('ruta', [])[:3]
+    descriptions = {uid: r for uid, r in report.get('descripcion_asistida', {}).get('horizontes', {}).items() if any(v not in (None, '') for v in r.values())}
+    if descriptions:
+        payload['descripcion_horizontes'] = descriptions
+    site = report.get('descripcion_asistida', {}).get('sitio', {})
+    if site:
+        payload['sitio_evidencia'] = {k: v for k, v in site.items() if k != 'elevacion_m'}
     return hashlib.sha256(json.dumps(payload, sort_keys=True, ensure_ascii=False, allow_nan=False).encode()).hexdigest()
 
 def validate_extra(rows, depth):
