@@ -4,6 +4,7 @@ from soil_profile import HORIZON_COLUMNS, TEXT_COLUMNS
 from texture import AUTO, FRACTIONS, apply_editor_changes, texture_figure, ENGLISH
 from field_help import column_help
 from visual_observations import ensure_horizon_ids
+from taxonomy_scope import HORIZON_USES
 
 
 FIELD_COLUMNS = {
@@ -31,7 +32,7 @@ def horizon_presentation(column):
                    if column in BASIC_COLUMNS else
                    'Se completa según los datos disponibles y los requisitos de la clave; no es obligatorio para todos los perfiles.')
     label = f'{marker} {column}' + (' *' if column in BASIC_COLUMNS else '')
-    return label, f'{source} {requirement} {column_help(column)}'
+    return label, f'{source} {requirement} {column_help(column)} USDA 2022: {HORIZON_USES.get(column, "Cálculo derivado de textura; no determina el taxón.")}'
 
 
 def render_horizons():
@@ -40,6 +41,14 @@ def render_horizons():
     st.caption("Introduce dos fracciones de arena/limo/arcilla en cualquier orden. Al confirmar la celda con Enter o salir de ella, se calcula la tercera y se actualizan clase y gráfico. La columna Fracción calculada identifica el valor derivado.")
     st.caption("Si cambias una fracción medida, se recalcula la derivada. Si editas directamente la derivada, las tres pasan a ser manuales. Borra una para volver al cálculo automático. No se corrigen sumas superiores a 100 %.")
     columns = HORIZON_COLUMNS + [AUTO]
+    views = {
+        'Descripción de campo': FIELD_COLUMNS,
+        'Textura y fracciones': set(FRACTIONS) | {'Clase textural USDA', AUTO, 'Fragmentos (%)'},
+        'Mediciones para diagnósticos': set(HORIZON_COLUMNS) - FIELD_COLUMNS - set(FRACTIONS),
+        'Todos los campos': set(columns),
+    }
+    view = st.selectbox('Campos de horizontes que deseas mostrar', list(views), index=3, key='profile_horizon_view', help='Cambia las columnas visibles sin eliminar datos. Las mediciones necesarias dependen de la clave y del diagnóstico evaluado.')
+    shown = [c for c in columns if c in views[view] | BASIC_COLUMNS | {'Métodos / muestra / observaciones'}]
     if "horizon_rows" not in st.session_state:
         st.session_state.horizon_rows = [{}]
         st.session_state.horizon_revision = 0
@@ -62,7 +71,7 @@ def render_horizons():
             maximum = 100.0 if "(%)" in c else (14.0 if c.startswith("pH") else None)
             configs[c] = st.column_config.NumberColumn(label, min_value=0.0, max_value=maximum, help=help_text)
     st.data_editor(initial, num_rows="dynamic", column_config=configs, disabled=[AUTO, "Clase textural USDA"],
-        hide_index=True, key=editor_key, on_change=commit)
+        column_order=shown, hide_index=True, key=editor_key, on_change=commit)
     horizons = initial.drop(columns=[AUTO])
     active = [r for r in rows if any(r.get(f) is not None for f in FRACTIONS) or r.get("Horizonte")]
     selected = None

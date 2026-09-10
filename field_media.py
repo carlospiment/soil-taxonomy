@@ -79,8 +79,6 @@ def render_location_photos():
             help="Hasta 10 fotos, 20 MB por foto y 60 MB en total. Añade una escala y el identificador del perfil cuando sea posible.")
         st.caption("Las fotos se conservan en esta sesión. Para guardarlas, descarga el ZIP al final; el JSON por sí solo contiene únicamente sus referencias y descripciones.")
         photos = [dict(p) for p in st.session_state.get('study_photos', [])]
-        for photo in photos:
-            st.image(photo['data'], caption=photo['descripcion'] or photo['nombre_original'], width=350)
         files = files or []
         if len(files) + len(photos) > 10 or sum(f.size for f in files) + sum(len(p['data']) for p in photos) > 60 * 1024 * 1024:
             st.warning("Reduce la selección a un máximo de 10 fotos y 60 MB en total.")
@@ -96,7 +94,14 @@ def render_location_photos():
             if any(p['sha256'] == sha for p in photos):
                 continue
             safe_name = re.sub(r"[^\w.\-]", "_", file.name.replace("\\", "/").split("/")[-1])
-            st.image(data, caption=file.name, width=350)
-            caption = st.text_input("Descripción / horizonte de la foto", key=f"photo_caption_{i}_{sha}", help="Indica qué muestra la imagen, horizonte o profundidad, orientación y escala.")
-            photos.append({"nombre_original": file.name, "ruta_zip": f"fotos/{len(photos)+1:02d}_{safe_name}", "descripcion": caption, "sha256": sha, **info, "data": data})
+            photos.append({"nombre_original": file.name, "ruta_zip": f"fotos/{sha}_{safe_name}", "descripcion": '', "sha256": sha, **info, "data": data})
+        included = []
+        for photo in photos:
+            sha = photo['sha256']
+            st.image(photo['data'], caption=photo['descripcion'] or photo['nombre_original'], width=350)
+            photo['descripcion'] = st.text_input('Descripción / horizonte de la foto', value=photo.get('descripcion', ''), key=f'photo_caption_{sha}', help='Vincula la observación al horizonte, profundidad, condición de humedad y escala. La foto documenta evidencia; no confirma un diagnóstico.')
+            excluded = st.checkbox('Excluir esta foto de la ficha', key=f'profile_photo_exclude_{sha}', help='Exclusión reversible. Desmarca para volver a incluirla. No elimina el archivo original.')
+            if not excluded:
+                included.append(photo)
+        photos = included
     return location, photos

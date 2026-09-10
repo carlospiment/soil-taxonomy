@@ -52,10 +52,15 @@ def validate_profile(horizons, diagnostics, depth):
     if not horizons:
         pending.append("Describir al menos un horizonte.")
     for i, row in enumerate(horizons, 1):
+        if missing(row.get('Horizonte')):
+            pending.append(f'Horizonte {i}: registrar identificación del horizonte o intervalo.')
+        measured_laboratory = [k for k in HORIZON_COLUMNS[13:] if k not in TEXT_COLUMNS and k not in ('Slickensides (%)', 'Nódulos / plintita (%)') and not missing(row.get(k))]
+        if measured_laboratory and missing(row.get('Métodos / muestra / observaciones')):
+            pending.append(f'Horizonte {i}: documentar muestra, método y criterio USDA de las mediciones de laboratorio.')
         top, bottom = row.get("Techo (cm)"), row.get("Base (cm)")
         if missing(top) or missing(bottom):
             pending.append(f"Horizonte {i}: completar techo y base.")
-        elif not math.isfinite(top) or not math.isfinite(bottom) or top < 0 or bottom <= top:
+        elif type(top) not in (int, float) or type(bottom) not in (int, float) or not math.isfinite(top) or not math.isfinite(bottom) or top < 0 or bottom <= top:
             errors.append(f"Horizonte {i}: la base debe ser mayor que el techo y las profundidades deben ser válidas.")
         else:
             if previous is not None and top < previous:
@@ -68,7 +73,7 @@ def validate_profile(horizons, diagnostics, depth):
                 errors.append(f"Horizonte {i}: excede la profundidad observada.")
             previous = bottom
         fractions = [row.get(f"{part} (%)") for part in ("Arena", "Limo", "Arcilla")]
-        if all(not missing(v) for v in fractions) and abs(sum(fractions) - 100) > 0.000001:
+        if all(type(v) in (int, float) and math.isfinite(v) for v in fractions) and abs(sum(fractions) - 100) > 0.000001:
             errors.append(f"Horizonte {i}: arena + limo + arcilla debe sumar 100 %. Borra una fracción para calcularla por diferencia o revisa las mediciones.")
         elif sum(v for v in fractions if isinstance(v, (int, float)) and math.isfinite(v)) > 100.000001:
             errors.append(f"Horizonte {i}: las fracciones introducidas ya superan 100 %; no se puede calcular una tercera negativa.")
@@ -82,6 +87,8 @@ def validate_profile(horizons, diagnostics, depth):
     if depth is not None and previous is not None and previous < depth:
         pending.append(f"Falta describir el intervalo de {previous:g} a {depth:g} cm.")
     for row in diagnostics:
+        if row.get("Estado") == 'Ausente' and missing(row.get('Evidencia / método / criterio')):
+            pending.append(f"{row['Diagnóstico']}: documentar la evidencia de ausencia; no equivale a no evaluado.")
         if row.get("Estado") != "Presente":
             continue
         name = row["Diagnóstico"]

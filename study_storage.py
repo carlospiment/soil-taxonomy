@@ -37,6 +37,14 @@ def _string(value):
 
 
 def _validate_controls(report):
+    review = report.get('revision_ruta_manual', {})
+    if not isinstance(review, dict):
+        raise ValueError('Revisión de la ruta incompatible.')
+    for flag in ('requires_review', 'had_proposal'):
+        if flag in review and type(review[flag]) is not bool:
+            raise ValueError('Estado de revisión incompatible.')
+    if 'evidence_fingerprint' in review:
+        _string(review['evidence_fingerprint'])
     numeric = {'profundidad_cm', 'profundidad_contacto_cm', 'temperatura_media_suelo_c', 'diferencia_estacional_c', 'profundidad_saturacion_cm', 'duracion_saturacion_dias', 'grietas_ancho_mm', 'grietas_profundidad_cm', 'grietas_duracion_dias'}
     for field in FIELDS.values():
         if field not in report:
@@ -49,7 +57,7 @@ def _validate_controls(report):
     enums = {
         'origen_profundidades': ['Superficie del suelo', 'Superficie del suelo mineral'],
         'contacto': ['No evaluado', 'No observado hasta la profundidad explorada', 'Lítico', 'Paralítico', 'Dénsico'],
-        'regimen_humedad': ['No evaluado', 'Árídico / tórrico', 'Údico', 'Perúdico', 'Ústico', 'Xérico'],
+        'regimen_humedad': ['No evaluado', 'Árídico / tórrico', 'Údico', 'Perúdico', 'Ústico', 'Xérico', 'Ácuico', 'Perácuico'],
         'regimen_temperatura': ['No evaluado', 'Gélico', 'Cryic', 'Frígido', 'Mésico', 'Térmico', 'Hipertérmico', 'Isofrígido', 'Isomésico', 'Isotérmico', 'Isohipertérmico'],
         'saturacion': ['No evaluado', 'Endosaturación', 'Episaturación', 'Saturación antrópica', 'No observada en el período evaluado'], 'reduccion': STATES,
     }
@@ -95,6 +103,10 @@ def _validate_controls(report):
             raise ValueError('Hemisferio incompatible.')
     guide = report.get('clave_guiada') or {}
     if guide:
+        if 'requires_review' in guide and type(guide['requires_review']) is not bool:
+            raise ValueError('Estado de revisión de clave incompatible.')
+        if 'evidence_fingerprint' in guide:
+            _string(guide['evidence_fingerprint'])
         if guide['group'] not in KEYS:
             raise ValueError('Clave guiada incompatible.')
         codes = {e['code'] for e in KEYS[guide['group']]['entries']}
@@ -144,6 +156,8 @@ def restore_state(report):
     state['horizon_revision'] = 0
     state['study_tables'] = {key: deepcopy(report[field]) for key, field in TABLES.items()}
     state['study_tables']['profile_laboratory'] = deepcopy(report.get('laboratorio', []))
+    state['study_laboratory_legacy'] = deepcopy(report.get('laboratorio_historico_no_taxonomico', []))
+    state['profile_manual_review'] = deepcopy(report.get('revision_ruta_manual', {}))
     location = report.get('ubicacion', {})
     state['location_mode'] = location.get('sistema', 'Sin registrar')
     datum = location.get('datum', 'WGS 84')
@@ -162,7 +176,10 @@ def restore_state(report):
 def validate_report(report):
     if not isinstance(report, dict):
         raise ValueError('La ficha debe ser un objeto.')
-    validate_rows(report.get('laboratorio', []))
+    # A portable draft preserves invalid measurements as text, while enforcing
+    # the schema. The profile evaluator reports and blocks their scientific use.
+    validate_rows(report.get('laboratorio', []), check_results=False)
+    validate_rows(report.get('laboratorio_historico_no_taxonomico', []), check_results=False)
     for field in ('horizontes', 'diagnosticos', 'medidas_adicionales', 'ruta', 'fotos'):
         if not isinstance(report.get(field), list) or len(report[field]) > 1000 or not all(isinstance(r, dict) for r in report[field]):
             raise ValueError('Tabla ausente o incompatible: ' + field)

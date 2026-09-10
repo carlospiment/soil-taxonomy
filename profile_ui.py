@@ -1,11 +1,11 @@
 """Ficha pedológica y documentación de la determinación taxonómica."""
 import json
-import hashlib
 import pandas as pd
 import streamlit as st
 from field_help import help_for, table_help
 from horizon_editor import render_horizons
-from laboratory import render_laboratory
+from laboratory import render_laboratory, laboratory_issues
+from taxonomy_scope import evidence_fingerprint, validate_extra, determination, DIAGNOSTIC_ENGLISH, EXTRA_USES, HORIZON_USES
 from field_media import render_location_photos, make_archive
 from subgroup_guide import render_guide
 from visual_observations import HORIZON_ID, extend_report, new_id
@@ -16,7 +16,15 @@ from soil_profile import (
 
 def study_editor(data, **kwargs):
     saved = st.session_state.get('study_tables', {}).get(kwargs['key'])
-    return st.data_editor(pd.DataFrame(saved) if saved is not None else data, **kwargs)
+    frame = pd.DataFrame(saved) if saved is not None else data
+    if kwargs['key'] == 'profile_diagnostics':
+        frame = frame.copy()
+        frame['Término USDA'] = frame['Diagnóstico'].map(DIAGNOSTIC_ENGLISH)
+        kwargs['column_config'] = {**kwargs.get('column_config', {}), 'Diagnóstico': None}
+        kwargs['disabled'] = list(kwargs.get('disabled', [])) + ['Término USDA']
+        kwargs['column_order'] = ['Término USDA', 'Estado', 'Techo (cm)', 'Base (cm)', 'Evidencia / método / criterio']
+        return st.data_editor(frame, **kwargs).drop(columns=['Término USDA'])
+    return st.data_editor(frame, **kwargs)
 
 
 def render_profile():
@@ -28,8 +36,14 @@ def render_profile():
     st.write("Registra las evidencias y documenta cada paso de las claves: orden → suborden → gran grupo → subgrupo.")
     st.info("Este módulo organiza una determinación asistida. Incluye claves guiadas de Hapludults y Dystrudepts; los demás grupos requieren la clave oficial. Un dato vacío significa no medido, no cero; un diagnóstico no evaluado no equivale a ausente.")
     st.markdown(f"Referencia: [{EDITION}]({SOURCE_URL}). Consultar las definiciones completas y las claves del orden correspondiente.")
+    summary = st.container()
+    st.caption('Etapas: documentación del pedón → evidencias por horizonte → diagnósticos y rasgos → claves → determinación. Completa las mediciones que exija tu recorrido; la aplicación no deduce un diagnóstico de un valor aislado.')
+    with st.expander('Qué documenta cada campo y dónde se utiliza en USDA'):
+        st.dataframe(pd.DataFrame([{'Campo': k, 'Función / referencia USDA 2022': v} for k, v in {**HORIZON_USES, **EXTRA_USES}.items()]), hide_index=True)
+        st.caption('Las referencias indican usos posibles. La entrada oficial elegida determina si un dato es necesario y qué método, intervalo y combinaciones AND/OR se aplican. El catálogo no sustituye las definiciones completas.')
 
-    with st.expander("1. Identificación, profundidad y regímenes", expanded=True):
+    with st.expander("1. Documentación del pedón, profundidad y regímenes", expanded=True):
+        st.caption('Identificador, responsable, fecha, ubicación y fotos documentan las observaciones; no son criterios de pertenencia a un taxón. Regímenes y profundidades: Keys 2022, capítulos 3 y 4.')
         left, right = st.columns(2)
         with left:
             profile_id = st.text_input("Identificador del perfil", key="profile_id", help=help_for('profile_id'))
@@ -41,19 +55,24 @@ def render_profile():
             contact = st.selectbox("Contacto limitante", ["No evaluado", "No observado hasta la profundidad explorada", "Lítico", "Paralítico", "Dénsico"], key="profile_contact", help=help_for('profile_contact'))
             contact_depth = st.number_input("Profundidad del contacto (cm)", min_value=0.0, value=None, key="profile_contact_depth", help=help_for('profile_contact_depth'))
         with right:
-            moisture = st.selectbox("Régimen de humedad verificado", ["No evaluado", "Árídico / tórrico", "Údico", "Perúdico", "Ústico", "Xérico"], key="profile_moisture", help=help_for('profile_moisture'))
+            moisture = st.selectbox("Régimen de humedad verificado", ["No evaluado", "Árídico / tórrico", "Údico", "Perúdico", "Ústico", "Xérico", "Ácuico", "Perácuico"], key="profile_moisture", help=help_for('profile_moisture'))
             temperature = st.selectbox("Régimen de temperatura verificado", ["No evaluado", "Gélico", "Cryic", "Frígido", "Mésico", "Térmico", "Hipertérmico", "Isofrígido", "Isomésico", "Isotérmico", "Isohipertérmico"], key="profile_temperature", help=help_for('profile_temperature'))
             mean_temp = st.number_input("Temperatura media anual del suelo (°C)", value=None, key="profile_mean_temp", help=help_for('profile_mean_temp'))
             seasonal_temp = st.number_input("Diferencia verano–invierno del suelo (°C)", min_value=0.0, value=None, key="profile_seasonal_temp", help=help_for('profile_seasonal_temp'))
             climate_evidence = st.text_area("Evidencia de los regímenes: profundidad, sección de control, período y método", key="profile_climate_evidence", help=help_for('profile_climate_evidence'))
+            st.caption('Términos USDA: aridic/torric, udic, perudic, ustic, xeric, aquic y peraquic. Aquic conditions se evalúan además en los rasgos diagnósticos; no se deducen solo del régimen seleccionado. Temperatura: gelic, cryic, frigid, mesic, thermic, hyperthermic y variantes iso según definición.')
     location, photos = render_location_photos()
     with st.expander("2. Descripción y laboratorio por horizonte", expanded=True):
         st.caption("Añade una fila por horizonte o intervalo de muestreo. Porcentajes texturales sobre tierra fina. Mantén separados los métodos de saturación de bases y las unidades de CIC del suelo y de la arcilla.")
         horizons, derived_fractions = render_horizons()
-    with st.expander("2b. Análisis de laboratorio y fertilidad", expanded=True):
-        laboratory_rows = render_laboratory()
+    with st.expander("2b. Determinaciones de laboratorio para la clave USDA", expanded=False):
+        laboratory_rows = render_laboratory(depth)
     with st.expander("3. Horizontes y propiedades diagnósticas"):
         st.caption("Marca Presente solo si se cumplen todos los criterios de la definición, incluidos espesor, profundidad y método. Una designación Bt o Bw no confirma por sí misma un horizonte diagnóstico.")
+        st.markdown(f'[Definiciones oficiales: capítulo 3, Keys 2022]({SOURCE_URL}#page=19). Conserva en la evidencia el nombre oficial, sección o página y los requisitos evaluados.')
+        with st.expander('Correspondencia de términos con USDA'):
+            st.dataframe(pd.DataFrame([{'Término de la ficha': k, 'Término o criterio oficial': v} for k, v in DIAGNOSTIC_ENGLISH.items()]), hide_index=True)
+            st.caption('Los rasgos vérticos y la cementación por hierro se documentan como evidencias; estas etiquetas no confirman por sí mismas un horizonte diagnóstico.')
         diagnostics = study_editor(pd.DataFrame({
             "Diagnóstico": DIAGNOSTICS, "Estado": ["No evaluado"] * len(DIAGNOSTICS),
             "Techo (cm)": [None] * len(DIAGNOSTICS), "Base (cm)": [None] * len(DIAGNOSTICS),
@@ -109,8 +128,16 @@ def render_profile():
     } for n, i in enumerate(populated_indices)]
     diagnostic_records = json.loads(diagnostics.to_json(orient="records"))
     errors, pending = validate_profile(records, diagnostic_records, depth)
+    extra_records = json.loads(extra.to_json(orient='records'))
+    for new_errors, new_pending in (laboratory_issues(laboratory_rows, depth), validate_extra(extra_records, depth)):
+        errors.extend(new_errors)
+        pending.extend(new_pending)
+    documentation = []
+    for label, value in (('identificador del perfil', profile_id), ('responsable', observer), ('fecha de descripción', observed_date)):
+        if value is None or not str(value).strip():
+            documentation.append(f'Completar {label}.')
     if location and not location.get("completa"):
-        pending.append("Completar o corregir la ubicación que se empezó a registrar.")
+        documentation.append("Completar o corregir la ubicación que se empezó a registrar.")
     if contact in ["Lítico", "Paralítico", "Dénsico"]:
         if contact_depth is None:
             pending.append("Registrar la profundidad del contacto limitante.")
@@ -118,11 +145,20 @@ def render_profile():
             errors.append("El contacto está por debajo de la profundidad observada; amplía o justifica la observación.")
     if moisture == "No evaluado" or temperature == "No evaluado" or not climate_evidence.strip():
         pending.append("Documentar los regímenes y su evidencia; no inferirlos solo a partir del clima regional.")
+    for label, measured_depth in (('Saturación', water_depth), ('Grietas', cracks_depth)):
+        if measured_depth is not None and depth is not None and measured_depth > depth:
+            errors.append(f'{label}: la profundidad supera la observación del perfil.')
+    if contact in ('No evaluado', 'No observado hasta la profundidad explorada') and contact_depth is not None:
+        pending.append('Revisar profundidad del contacto: no hay un tipo de contacto identificado.')
+    if saturation == 'No observada en el período evaluado' and (water_depth is not None or (water_days or 0) > 0):
+        errors.append('Saturación: se declararon medidas positivas junto con no observada; revisar el período y la evidencia.')
     st.subheader("Control de evidencias")
     for error in errors:
         st.error(error)
     for item in pending:
         st.warning(item)
+    for item in documentation:
+        st.warning('Documentación del pedón: ' + item)
     st.caption(f"{sum(r['Estado'] == 'No evaluado' for r in diagnostic_records)} diagnósticos no evaluados. La clave elegida determina cuáles son necesarios; no todos son obligatorios para cada perfil.")
 
     with st.expander("5. Ruta taxonómica documentada", expanded=True):
@@ -139,9 +175,6 @@ def render_profile():
         status, subgroup = evaluate_route(route_records, errors)
         if pending and subgroup:
             status = "Subgrupo propuesto por el usuario con evidencias pendientes; no validado"
-        st.info(status)
-        if subgroup:
-            st.write(f"Subgrupo registrado: **{subgroup}**")
         st.caption("Se comprueba la documentación, no la validez del nombre ni la coherencia taxonómica de esta ruta manual. La determinación requiere revisar las claves completas.")
 
     report = {
@@ -160,20 +193,58 @@ def render_profile():
         "reduccion": reduction, "evidencia_redox": redox_notes,
         "grietas_ancho_mm": cracks_width, "grietas_profundidad_cm": cracks_depth,
         "grietas_duracion_dias": cracks_days, "otros_rasgos": other,
-        "medidas_adicionales": json.loads(extra.to_json(orient="records")),
+        "medidas_adicionales": extra_records,
         "laboratorio": laboratory_rows,
+        "laboratorio_historico_no_taxonomico": st.session_state.get('study_laboratory_legacy_current', []),
+        "pendientes_documentacion": documentation,
         "ruta": route_records, "errores": errors, "pendientes": pending,
     }
     # La fila manual de subgrupo no modifica las evidencias de entrada de la guía.
-    guide_input = {**report, "ruta": route_records[:3]}
-    guide_input.pop("estado")
-    guide_input.pop("subgrupo_registrado_por_usuario")
-    fingerprint = hashlib.sha256(json.dumps(guide_input, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+    fingerprint = evidence_fingerprint(report)
+    manual_proposal = str(route_records[-1].get('Taxón') or '').strip() or None
+    manual_review = st.session_state.get('profile_manual_review', {})
+    if manual_review.get('evidence_fingerprint') not in (None, fingerprint) and manual_review.get('had_proposal'):
+        manual_review['requires_review'] = True
+    manual_review.update(evidence_fingerprint=fingerprint, had_proposal=bool(manual_proposal))
+    if manual_review.get('requires_review') and manual_proposal:
+        st.warning('Cambió la evidencia que respalda la ruta manual. Se conservaron los textos; revisa su vigencia.')
+        if st.button('Confirmar revisión de la ruta manual con la evidencia actual', key='profile_confirm_manual'):
+            manual_review['requires_review'] = False
+    if not manual_proposal:
+        manual_review['requires_review'] = False
+    st.session_state.profile_manual_review = manual_review
+    report['revision_ruta_manual'] = dict(manual_review)
     with st.expander("6. Identificación con claves guiadas", expanded=True):
         guide = render_guide(route_records, errors + pending, fingerprint)
     report["clave_guiada"] = guide
-    if guide and guide.get("subgroup"):
-        report["estado"] = "Subgrupo por clave asistida; condicionado a la evidencia declarada"
+    conclusion_pending = list(pending)
+    if manual_proposal and (not subgroup or manual_review.get('requires_review')):
+        conclusion_pending.append('Completar o revisar la ruta manual con la evidencia actual.')
+    conclusion = determination(manual_proposal, guide, errors, conclusion_pending)
+    report['pendientes_determinacion'] = conclusion_pending + ([guide['reason']] if guide and not guide.get('subgroup') else [])
+    report['contradicciones'] = ['Los subgrupos manual y asistido difieren; revisar la ruta y las decisiones.'] if conclusion['discrepancia'] else []
+    completed_levels = []
+    for row in route_records:
+        if row.get('Revisión') != 'Cumple; anteriores descartados' or any(not str(row.get(c) or '').strip() for c in ('Taxón', 'Clave / página', 'Evidencia y exclusión de anteriores')):
+            break
+        completed_levels.append(row['Nivel'])
+    report['ultimo_nivel_documentado'] = completed_levels[-1] if completed_levels else None
+    report['determinacion'] = conclusion
+    report['estado'] = conclusion['estado']
+    report['subgrupo_registrado_por_usuario'] = manual_proposal
+    report['estado_ficha'] = 'Ficha incompleta' if documentation else 'Documentación básica completa'
+    with summary:
+        st.info(report['estado'])
+        st.caption(f"{len(errors)} errores · {len(report['pendientes_determinacion'])} pendientes de determinación · {len(report['contradicciones'])} contradicciones · {len(documentation)} faltantes de documentación. {report['estado_ficha']}.")
+    st.subheader('7. Determinación documentada y descarga')
+    st.info(report['estado'])
+    st.caption(f"Último nivel documentado en la ruta manual: {report['ultimo_nivel_documentado'] or 'ninguno'}.")
+    st.write(f"Ruta manual: **{manual_proposal or 'Pendiente'}** · Clave asistida: **{conclusion['subgrupo_asistido'] or 'Pendiente'}**")
+    if conclusion['discrepancia']:
+        st.error('Los subgrupos difieren. Revisa las evidencias y corrige la ruta o las decisiones de la guía; no se adopta un subgrupo mientras exista la discrepancia.')
+    st.write(f"Subgrupo adoptado: **{conclusion['subgrupo_adoptado'] or 'Pendiente'}**")
+    st.caption('El resultado está condicionado a la evidencia declarada y a la revisión de las claves completas. No constituye una validación taxonómica independiente.')
+    st.caption('JSON: ficha, ruta y evidencias, sin imágenes originales. ZIP de ficha: añade fotos del perfil. Guardar estudio completo, al final de la app: respaldo editable con originales e historial de análisis.')
     # La trazabilidad no forma parte de la huella de evidencia taxonómica:
     # registrar/revisar una propuesta no equivale a modificar el perfil.
     report = extend_report(report, profile_uid=st.session_state.profile_uid,

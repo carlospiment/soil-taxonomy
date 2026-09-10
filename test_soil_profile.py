@@ -22,7 +22,7 @@ class ProfileTests(unittest.TestCase):
         self.assertTrue(any("Argílico" in p for p in pending))
 
     def test_missing_intervals(self):
-        _, pending = validate_profile([{"Techo (cm)": 10, "Base (cm)": 30}], [], 100)
+        _, pending = validate_profile([{"Horizonte": "A", "Techo (cm)": 10, "Base (cm)": 30}], [], 100)
         self.assertEqual(len(pending), 2)
 
     def test_manual_route_cannot_skip_parent(self):
@@ -102,7 +102,11 @@ class GuidedKeyTests(unittest.TestCase):
         app.text_input(key="revision").set_value("2").run()
         self.assertFalse(app.exception)
         self.assertFalse(app.success)
-        self.assertEqual(app.selectbox(key="guide_HCGA_outcome").value, "No evaluado")
+        self.assertEqual(app.selectbox(key="guide_HCGA_outcome").value, "No cumple")
+        self.assertEqual(app.text_area(key='guide_HCGB_evidence').value, 'Contacto lítico a 40 cm')
+        app.button(key='guide_confirm_Hapludults').click().run()
+        self.assertFalse(app.exception)
+        self.assertTrue(any('Lithic Hapludults' in s.value for s in app.success))
 
 
 if __name__ == "__main__":

@@ -36,6 +36,11 @@ def render_study_export():
     if report is None:
         st.warning('La ficha del perfil todavía no está disponible para guardar. Abre Perfil y subgrupo. Si el aviso persiste, comprueba que profile_ui.py y storage_ui.py estén actualizados juntos en el despliegue.')
     else:
+        historical = report.get('laboratorio_historico_no_taxonomico', [])
+        if historical:
+            import json
+            st.caption(f'{len(historical)} registros históricos de laboratorio se conservan fuera de la evidencia taxonómica, incluidos en el respaldo completo.')
+            st.download_button('Descargar laboratorio histórico (JSON)', json.dumps(historical, ensure_ascii=False, indent=2), 'laboratorio_historico.json', 'application/json', key='study_legacy_laboratory_download')
         try:
             archive = build_study(report, st.session_state.get('study_current_photos', []), st.session_state.get('study_images', {}), st.session_state.get('study_structures', []))
             st.download_button('Guardar estudio completo (ZIP)', archive, 'estudio_suelo.zip', 'application/zip', key='study_download')

@@ -1,5 +1,14 @@
 # Perfil y subgrupo
 
+## Actualización USDA exclusiva — 10 de septiembre de 2026
+
+La primera pestaña se limita a evidencias y documentación para **Keys to Soil
+Taxonomy, 13th edition (2022)**, hasta subgrupo. La guía de esta actualización es
+[Perfil USDA: alcance, validación y resultados](investigacion/perfil_usda_2026.md).
+Esta sección y esa guía sustituyen las indicaciones históricas de fertilidad y
+borrado de decisiones descritas más abajo. El PDF del manual anterior todavía
+describe la interfaz previa; para estos cambios utiliza la guía enlazada.
+
 El módulo sustituye las reglas que asignaban un orden usando únicamente pH,
 materia orgánica o arcilla. Permite registrar evidencias por horizonte y una
 ruta taxonómica manual. No confirma diagnósticos a partir de esos valores aislados.
@@ -22,7 +31,7 @@ ruta taxonómica manual. No confirma diagnósticos a partir de esos valores aisl
    excluir y documentar todas las anteriores.
 6. Descarga el JSON para conservar la ficha y las decisiones, o el ZIP para incluir
    las fotos originales aceptadas. Los cambios de
-   evidencia invalidan las respuestas de la guía al volver a evaluarla. El JSON
+   evidencia conservan las respuestas y exigen revisar su vigencia. El JSON
    conserva referencias; para recuperar un estudio completo usa el ZIP de Fase 7.
 
 ## Fotos, coordenadas y textura
@@ -426,9 +435,10 @@ Ejecuta `.\.venv\Scripts\python.exe -m unittest -v test_app test_soil_profile te
 Las pruebas verifican funcionamiento, coherencia de datos y precedencia. No
 constituyen validación científica con pedones de referencia.
 
-### Análisis de laboratorio y fertilidad
+### Laboratorio anterior: compatibilidad histórica
 
-En **Perfil y subgrupo → 2b. Análisis de laboratorio y fertilidad** se registra
+La versión anterior incluía **Análisis de laboratorio y fertilidad**. Ahora,
+**Perfil y subgrupo → 2b. Determinaciones de laboratorio para la clave USDA** registra
 una fila por determinación y muestra, con horizonte, profundidad, resultado
 original, unidad, método y datos del informe. Se admiten comas decimales,
 límites como `<0,02` y resultados `ND`; los datos ausentes no se convierten en cero.
@@ -436,7 +446,9 @@ límites como `<0,02` y resultados `ND`; los datos ausentes no se convierten en 
 La vista de resultados normalizados convierte únicamente unidades compatibles.
 Para ppm exige confirmar la base de suelo seco por masa. Las saturaciones y
 relaciones conservan el denominador o la fórmula informados por el laboratorio.
-Los resultados se incluyen en la ficha JSON y en el respaldo ZIP, se recuperan
+Los registros agronómicos anteriores y sus categorías se conservan como históricos,
+fuera de la evidencia taxonómica; pueden descargarse desde Guardar estudio y respaldo.
+Los resultados taxonómicos se incluyen en la ficha JSON y en el respaldo ZIP, se recuperan
 al abrir el estudio y no se trasladan automáticamente a los campos taxonómicos.
 Los estudios anteriores sin esta tabla se abren con el laboratorio vacío.
 
