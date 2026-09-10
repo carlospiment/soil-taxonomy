@@ -5,6 +5,7 @@ import pandas as pd
 import streamlit as st
 from field_help import help_for, table_help
 from horizon_editor import render_horizons
+from laboratory import render_laboratory
 from field_media import render_location_photos, make_archive
 from subgroup_guide import render_guide
 from visual_observations import HORIZON_ID, extend_report, new_id
@@ -49,6 +50,8 @@ def render_profile():
     with st.expander("2. Descripción y laboratorio por horizonte", expanded=True):
         st.caption("Añade una fila por horizonte o intervalo de muestreo. Porcentajes texturales sobre tierra fina. Mantén separados los métodos de saturación de bases y las unidades de CIC del suelo y de la arcilla.")
         horizons, derived_fractions = render_horizons()
+    with st.expander("2b. Análisis de laboratorio y fertilidad", expanded=True):
+        laboratory_rows = render_laboratory()
     with st.expander("3. Horizontes y propiedades diagnósticas"):
         st.caption("Marca Presente solo si se cumplen todos los criterios de la definición, incluidos espesor, profundidad y método. Una designación Bt o Bw no confirma por sí misma un horizonte diagnóstico.")
         diagnostics = study_editor(pd.DataFrame({
@@ -158,6 +161,7 @@ def render_profile():
         "grietas_ancho_mm": cracks_width, "grietas_profundidad_cm": cracks_depth,
         "grietas_duracion_dias": cracks_days, "otros_rasgos": other,
         "medidas_adicionales": json.loads(extra.to_json(orient="records")),
+        "laboratorio": laboratory_rows,
         "ruta": route_records, "errores": errors, "pendientes": pending,
     }
     # La fila manual de subgrupo no modifica las evidencias de entrada de la guía.

@@ -13,6 +13,7 @@ from visual_observations import HORIZON_ID, extend_report, ensure_horizon_ids, n
 from texture import AUTO
 from soil_profile import HORIZON_COLUMNS, TEXT_COLUMNS, DIAGNOSTICS, STATES
 from subgroup_guide import KEYS
+from laboratory import validate_rows
 
 VERSION = 1
 MAX_ARCHIVE = 100 * 1024 * 1024
@@ -142,6 +143,7 @@ def restore_state(report):
     state['horizon_rows'] = ensure_horizon_ids(rows or [{}])
     state['horizon_revision'] = 0
     state['study_tables'] = {key: deepcopy(report[field]) for key, field in TABLES.items()}
+    state['study_tables']['profile_laboratory'] = deepcopy(report.get('laboratorio', []))
     location = report.get('ubicacion', {})
     state['location_mode'] = location.get('sistema', 'Sin registrar')
     datum = location.get('datum', 'WGS 84')
@@ -160,6 +162,7 @@ def restore_state(report):
 def validate_report(report):
     if not isinstance(report, dict):
         raise ValueError('La ficha debe ser un objeto.')
+    validate_rows(report.get('laboratorio', []))
     for field in ('horizontes', 'diagnosticos', 'medidas_adicionales', 'ruta', 'fotos'):
         if not isinstance(report.get(field), list) or len(report[field]) > 1000 or not all(isinstance(r, dict) for r in report[field]):
             raise ValueError('Tabla ausente o incompatible: ' + field)

@@ -426,5 +426,22 @@ Ejecuta `.\.venv\Scripts\python.exe -m unittest -v test_app test_soil_profile te
 Las pruebas verifican funcionamiento, coherencia de datos y precedencia. No
 constituyen validación científica con pedones de referencia.
 
+### Análisis de laboratorio y fertilidad
+
+En **Perfil y subgrupo → 2b. Análisis de laboratorio y fertilidad** se registra
+una fila por determinación y muestra, con horizonte, profundidad, resultado
+original, unidad, método y datos del informe. Se admiten comas decimales,
+límites como `<0,02` y resultados `ND`; los datos ausentes no se convierten en cero.
+
+La vista de resultados normalizados convierte únicamente unidades compatibles.
+Para ppm exige confirmar la base de suelo seco por masa. Las saturaciones y
+relaciones conservan el denominador o la fórmula informados por el laboratorio.
+Los resultados se incluyen en la ficha JSON y en el respaldo ZIP, se recuperan
+al abrir el estudio y no se trasladan automáticamente a los campos taxonómicos.
+Los estudios anteriores sin esta tabla se abren con el laboratorio vacío.
+
+Consulta el [catálogo, reglas y ejemplo de captura](investigacion/laboratorio_suelos.md).
+Pruebas: `python -m unittest -v test_laboratory test_study_storage`.
+
 Textura: [Soil Survey Manual (2017), capítulo 3, figura 3-7](https://www.nrcs.usda.gov/sites/default/files/2022-09/SSM-ch3.pdf).
 Coordenadas: [NGA Coordinate Systems](https://earth-info.nga.mil/?action=coordsys&dir=coordsys).
