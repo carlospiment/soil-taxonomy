@@ -1,6 +1,7 @@
 """Field Book 4.0 (2024) descriptors, separate from taxonomic conclusions."""
 from assisted_forms import field
 import streamlit as st
+import math
 
 FIELD_BOOK = 'https://www.nrcs.usda.gov/sites/default/files/2025-04/Field-Book-for-Describing-and-Sampling-Soils-v4.pdf'
 STRUCTURES = ['Granular (GR)', 'Bloques angulares (ABK)', 'Bloques subangulares (SBK)',
@@ -10,7 +11,7 @@ STRUCTURELESS = {'Grano simple (SGR)', 'Masiva (MA)'}
 
 
 def structure_size(kind, mm):
-    if kind is None or kind in STRUCTURELESS or mm is None:
+    if kind is None or kind in STRUCTURELESS or mm is None or mm <= 0:
         return None
     bounds = [1, 2, 5, 10] if kind in ('Granular (GR)', 'Laminar (PL)') else [10, 20, 50, 100, 500] if kind in ('Prismática (PR)', 'Columnar (COL)', 'Cuñas (WEG)') else [5, 10, 20, 50]
     labels = ['Muy fina', 'Fina', 'Mediana', 'Gruesa', 'Muy gruesa', 'Extremadamente gruesa']
@@ -70,7 +71,7 @@ def render_morphology(row, uid):
             st.caption('Descripción registrada: ' + row['Estructura'])
     elif section == 'Consistencia':
         st.markdown(f'[Consistencia: pp. 2–63 a 2–67]({FIELD_BOOK}#page=113)')
-        field(record, 'consistencia_seca', key+'_dry', label='Resistencia a ruptura en seco', options=['Suelta', 'Blanda', 'Ligeramente dura', 'Moderadamente dura', 'Dura', 'Muy dura', 'Extremadamente dura', 'Rígida'])
+        field(record, 'consistencia_seca', key+'_dry', label='Resistencia a ruptura en seco', options=['Suelta', 'Blanda', 'Ligeramente dura', 'Moderadamente dura', 'Dura', 'Muy dura', 'Extremadamente dura', 'Rígida', 'Muy rígida'])
         field(record, 'consistencia_humeda', key+'_moist', label='Resistencia a ruptura húmeda', options=['Suelta', 'Muy friable', 'Friable', 'Firme', 'Muy firme', 'Extremadamente firme', 'Ligeramente rígida', 'Rígida', 'Muy rígida'])
         field(record, 'plasticidad', key+'_plastic', label='Plasticidad', options=['No plástica', 'Ligeramente plástica', 'Moderadamente plástica', 'Muy plástica'], help='Rollo de 4 cm: no sostiene 6 mm, sostiene 6 pero no 4 mm, sostiene 4 pero no 2 mm, o sostiene 2 mm, respectivamente. Evaluar humedad de máxima plasticidad.')
         field(record, 'pegajosidad', key+'_sticky', label='Pegajosidad', options=['No pegajosa', 'Ligeramente pegajosa', 'Moderadamente pegajosa', 'Muy pegajosa'])
@@ -104,3 +105,37 @@ def render_morphology(row, uid):
         field(record, 'mineralogia', key+'_minerals', label='Mineral identificado por análisis', options=['Caolinita', 'Esmectita', 'Illita', 'Vermiculita', 'Clorita', 'Gibbsita', 'Mezcla / otro: documentar'])
         field(record, 'mineralogia_metodo', key+'_mineral_method', label='Método, fracción, resultados e informe', multiline=True, help='Registrar resultados medidos. No asigna automáticamente una clase mineralógica de familia.')
     return record
+
+
+def description_issues(descriptions, horizons):
+    """Validate only active observations; preserve dormant values for editing."""
+    errors, pending = [], []
+    for row in horizons:
+        uid = row.get('_horizon_uid')
+        record = descriptions.get(uid, {})
+        label = 'Horizonte ' + str(row.get('Horizonte') or 'sin designación') + ': '
+        for name, value in record.items():
+            if name == 'estructura_mm' and record.get('estructura_tipo') in STRUCTURELESS:
+                continue
+            if name.startswith('redox_') and record.get('redox_estado') != 'Presentes':
+                continue
+            if name.endswith(('_mm', '_cm', '_porcentaje')) and value is not None:
+                if type(value) not in (int, float) or not math.isfinite(value) or value < 0 or (name.endswith('_porcentaje') and value > 100):
+                    errors.append(label + name + ': medida fuera de rango.')
+        if record.get('estructura_tipo') and record['estructura_tipo'] not in STRUCTURELESS:
+            if not record.get('estructura_grado') or record.get('estructura_mm') is None:
+                pending.append(label + 'completar grado y tamaño de la estructura observada.')
+            if record.get('estructura_mm') == 0:
+                errors.append(label + 'el tamaño del agregado debe ser mayor que cero.')
+        if record.get('redox_estado'):
+            if not record.get('redox_evidencia'):
+                pending.append(label + 'documentar evidencia e intervalo de los rasgos redox.')
+            if record['redox_estado'] == 'Presentes' and any(record.get(k) in (None, '') for k in ('redox_tipo', 'redox_color', 'redox_porcentaje', 'redox_mm', 'redox_contraste', 'redox_localizacion')):
+                pending.append(label + 'completar tipo, color, abundancia, tamaño, contraste y localización redox.')
+        if record.get('mineralogia') and not record.get('mineralogia_metodo'):
+            pending.append(label + 'documentar método, fracción e informe de mineralogía.')
+        if record.get('efervescencia') and not record.get('reactivo_carbonatos'):
+            pending.append(label + 'documentar reactivo y condición de la muestra para efervescencia.')
+        if row.get('Fragmentos (%)') is not None and not record.get('fragmentos_base'):
+            pending.append(label + 'especificar si los fragmentos se midieron en volumen o masa.')
+    return errors, pending

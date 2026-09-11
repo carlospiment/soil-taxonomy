@@ -29,6 +29,7 @@ LAB_USES = {
     'Conductividad eléctrica': 'Salic horizon: extracto de pasta saturada (cap. 3).',
     'Saturación de bases': 'Mollic/umbric epipedons; separación de taxones; especificar método (cap. 3; KFGW).',
     'Saturación de Na': 'Natric horizon; porcentaje de sodio intercambiable y método (cap. 3).',
+    'Relación de adsorción de sodio (SAR)': 'Natric horizon y criterios sódicos cuando la clave lo admita. Registrar extracto, unidades de Na/Ca/Mg y fórmula; no equivale al porcentaje de Na intercambiable (Keys 2022, cap. 3).',
     'Densidad aparente': 'Andic soil properties; condición de retención 33 kPa cuando se exige (cap. 3; KFGF–KFGH).',
     'Retención de P': 'Andic soil properties; método de retención, no P extraíble (cap. 3).',
     'Al oxalato': 'Andic soil properties/spodic materials; oxalato de amonio (cap. 3; KFGF–KFGI/KFGU).',
@@ -111,8 +112,9 @@ def evidence_fingerprint(report):
     if descriptions:
         payload['descripcion_horizontes'] = descriptions
     site = report.get('descripcion_asistida', {}).get('sitio', {})
-    if site:
-        payload['sitio_evidencia'] = {k: v for k, v in site.items() if k != 'elevacion_m'}
+    site_evidence = {k: v for k, v in site.items() if k != 'elevacion_m' and v not in (None, '')}
+    if site_evidence:
+        payload['sitio_evidencia'] = site_evidence
     return hashlib.sha256(json.dumps(payload, sort_keys=True, ensure_ascii=False, allow_nan=False).encode()).hexdigest()
 
 def validate_extra(rows, depth):

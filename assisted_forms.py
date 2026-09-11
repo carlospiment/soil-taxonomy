@@ -38,8 +38,10 @@ def field(record, name, key, *, label=None, options=None, numeric=False,
         result = st.selectbox(label, choices, index=choices.index(value), format_func=lambda v: 'No evaluado' if v is None else str(v), **args)
     else:
         result = (st.text_area if multiline else st.text_input)(label, value=value, **args)
-    # Do not create null/empty entries merely by displaying a field.
-    if name in record or result not in (None, ''):
+    # Viewing a record must not change its representation (e.g. None to '').
+    # Only the callback commits explicit clearing; nonempty initial values may
+    # be normalized to the widget's type without losing an observation.
+    if result not in (None, ''):
         record[name] = result
     return result
 

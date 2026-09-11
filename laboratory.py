@@ -21,6 +21,7 @@ _add('Ca/K|Mg/K|Ca/Mg|(Ca + Mg)/K|Relación C/N', {'sin unidad': 1})
 _add('Densidad aparente', {'g/cm³': 1, 'Mg/m³': 1})
 _add('Retención de P|Al oxalato|Fe oxalato|Vidrio volcánico|Retención agua 1500 kPa', {'%': 1})
 _add('ODOE|COLE', {'sin unidad': 1})
+_add('Relación de adsorción de sodio (SAR)', {'(mmolc/L)^0.5': 1})
 TAXONOMIC_CATALOG = {name: CATALOG[name] for name in LAB_USES}
 
 COLUMNS = ['Muestra', 'Horizonte / intervalo', 'Techo (cm)', 'Base (cm)',
@@ -112,7 +113,7 @@ def laboratory_issues(rows, depth=None):
                 errors.append(prefix + 'la muestra excede la profundidad observada.')
             if result['valor'] is None:
                 pending.append(prefix + 'resultado no medido o normalización pendiente; revisar unidad y base.')
-            if row['Parámetro'] in ('Saturación de bases', 'Saturación de Na', 'Suma de bases', 'CICE del suelo', 'CICE de la arcilla', 'CIC de la arcilla') and not str(row.get('Denominador / fórmula') or '').strip():
+            if row['Parámetro'] in ('Saturación de bases', 'Saturación de Na', 'Suma de bases', 'CICE del suelo', 'CICE de la arcilla', 'CIC de la arcilla', 'Relación de adsorción de sodio (SAR)') and not str(row.get('Denominador / fórmula') or '').strip():
                 pending.append(prefix + 'documentar denominador, fórmula y correcciones.')
             if row['Parámetro'] == 'pH' and not str(row.get('Relación suelo:solución') or '').strip():
                 pending.append(prefix + 'documentar relación suelo:solución.')
@@ -125,12 +126,12 @@ def render_laboratory(depth=None):
     import json
     import streamlit as st
     from assisted_forms import field, interval, choose_record
-    from uuid import uuid4
     st.caption('Una ficha por determinación. Selecciona el parámetro y registra el valor original, con su método y unidad. No se infieren diagnósticos ni fertilidad.')
     tables = st.session_state.setdefault('study_tables', {})
     saved = tables.setdefault('profile_laboratory', [])
     legacy = st.session_state.get('study_laboratory_legacy', []) + [r for r in saved if r.get('Parámetro') not in TAXONOMIC_CATALOG and r.get('Parámetro') is not None or r.get('Estado del laboratorio') not in (None, '', 'No informado')]
     st.session_state.study_laboratory_legacy_current = list({json.dumps(r, sort_keys=True, ensure_ascii=False): r for r in legacy}.values())
+    st.session_state.study_laboratory_legacy = st.session_state.study_laboratory_legacy_current
     rows = [r for r in saved if r.get('Parámetro') in TAXONOMIC_CATALOG or r.get('Parámetro') is None]
     tables['profile_laboratory'] = rows
     if st.button('Añadir análisis', key='profile_add_lab'):
@@ -161,7 +162,7 @@ def render_laboratory(depth=None):
             field(row, 'Detalle del método', key+'_method_detail', multiline=True, help='Nombre completo del procedimiento, preparación y referencia del laboratorio.')
         if name == 'pH':
             field(row, 'Relación suelo:solución', key+'_ratio', options=['1:1', '1:2', '1:2.5', '1:5', 'Pasta saturada', 'Otra: documentar'])
-        if 'CIC' in name or name in ('Saturación de bases', 'Saturación de Na', 'Suma de bases'):
+        if 'CIC' in name or name in ('Saturación de bases', 'Saturación de Na', 'Suma de bases', 'Relación de adsorción de sodio (SAR)'):
             field(row, 'Denominador / fórmula', key+'_formula', multiline=True)
     field(row, 'Muestra', key+'_sample')
     horizon_labels = [r.get('Horizonte') for r in st.session_state.get('horizon_rows', []) if r.get('Horizonte')]

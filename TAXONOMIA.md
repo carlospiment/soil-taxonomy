@@ -437,6 +437,19 @@ constituyen validación científica con pedones de referencia.
 
 ### Laboratorio anterior: compatibilidad histórica
 
+La primera pestaña utiliza fichas individuales para horizontes, determinaciones,
+diagnósticos y ruta taxonómica. Los datos categóricos se capturan mediante listas
+con «No evaluado», sin asignar observaciones por defecto. La descripción de campo
+incluye campos condicionados, tamaños de estructura y nitidez de límites asistidos
+según el USDA Field Book 4.0. La textura puede completar la tercera fracción a partir
+de dos porcentajes válidos. Estas ayudas no confirman automáticamente diagnósticos
+ni subgrupos.
+
+Los datos de sitio y descripción se conservan en `descripcion_asistida` del respaldo.
+Cambiar de ficha o esconder un campo condicionado conserva lo capturado; eliminar
+un horizonte o análisis permite deshacer la última eliminación durante la sesión.
+Las pruebas de interacción están en `test_assisted_capture.py`.
+
 La versión anterior incluía **Análisis de laboratorio y fertilidad**. Ahora,
 **Perfil y subgrupo → 2b. Determinaciones de laboratorio para la clave USDA** registra
 una fila por determinación y muestra, con horizonte, profundidad, resultado

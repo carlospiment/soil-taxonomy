@@ -100,7 +100,7 @@ def render_profile():
             climate_evidence = st.text_area("Evidencia de los regímenes: profundidad, sección de control, período y método", key="profile_climate_evidence", help=help_for('profile_climate_evidence'))
             st.caption('Términos USDA: aridic/torric, udic, perudic, ustic, xeric, aquic y peraquic. Aquic conditions se evalúan además en los rasgos diagnósticos; no se deducen solo del régimen seleccionado. Temperatura: gelic, cryic, frigid, mesic, thermic, hyperthermic y variantes iso según definición.')
     location, photos = render_location_photos()
-    from usda_capture import render_site
+    from usda_capture import render_site, description_issues
     site_description = render_site()
     with st.expander("2. Descripción y laboratorio por horizonte", expanded=True):
         st.caption("Completa una ficha por horizonte o intervalo. Porcentajes texturales sobre tierra fina; conserva el método y base de cada medición.")
@@ -170,7 +170,7 @@ def render_profile():
     diagnostic_records = json.loads(diagnostics.to_json(orient="records"))
     errors, pending = validate_profile(records, diagnostic_records, depth)
     extra_records = json.loads(extra.to_json(orient='records'))
-    for new_errors, new_pending in (laboratory_issues(laboratory_rows, depth), validate_extra(extra_records, depth)):
+    for new_errors, new_pending in (laboratory_issues(laboratory_rows, depth), validate_extra(extra_records, depth), description_issues(st.session_state.get('profile_horizon_descriptions', {}), st.session_state.horizon_rows)):
         errors.extend(new_errors)
         pending.extend(new_pending)
     documentation = []
